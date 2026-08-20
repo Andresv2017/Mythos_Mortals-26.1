@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "axis=x": { "model": "mythosmortals:block/olive_log_horizontal", "x": 90, "y": 90 },
+    "axis=y": { "model": "mythosmortals:block/olive_log" },
+    "axis=z": { "model": "mythosmortals:block/olive_log_horizontal", "x": 90 }
+  }
+}

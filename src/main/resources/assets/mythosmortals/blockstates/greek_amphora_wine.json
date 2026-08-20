@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "servings=1": { "model": "mythosmortals:block/greek_amphora_wine" },
+    "servings=2": { "model": "mythosmortals:block/greek_amphora_wine" },
+    "servings=3": { "model": "mythosmortals:block/greek_amphora_wine" },
+    "servings=4": { "model": "mythosmortals:block/greek_amphora_wine" }
+  }
+}

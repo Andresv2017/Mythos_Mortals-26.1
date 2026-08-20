@@ -1,0 +1,6 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#mythosmortals:has_olive",
+  "features": "mythosmortals:olive",
+  "step": "vegetal_decoration"
+}

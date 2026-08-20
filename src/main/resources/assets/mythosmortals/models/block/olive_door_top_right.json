@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_top_right",
+  "textures": {
+    "bottom": "mythosmortals:block/olive_door_bottom",
+    "top": "mythosmortals:block/olive_door_top"
+  }
+}

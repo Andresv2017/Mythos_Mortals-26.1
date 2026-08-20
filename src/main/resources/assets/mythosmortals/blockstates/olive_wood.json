@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "axis=x": { "model": "mythosmortals:block/olive_wood", "x": 90, "y": 90 },
+    "axis=y": { "model": "mythosmortals:block/olive_wood" },
+    "axis=z": { "model": "mythosmortals:block/olive_wood", "x": 90 }
+  }
+}

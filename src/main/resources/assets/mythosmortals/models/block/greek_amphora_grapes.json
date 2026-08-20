@@ -1,0 +1,4 @@
+{
+	"parent": "mythosmortals:block/greek_amphora",
+	"textures": {"vase": "mythosmortals:block/greek_amphora_wine"}
+}

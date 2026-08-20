@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": "mythosmortals:smooth_marble",
+  "result": {
+    "id": "mythosmortals:marble_pillar"
+  }
+}

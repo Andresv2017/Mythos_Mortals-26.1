@@ -1,0 +1,16 @@
+{
+  "type": "mythosmortals:marked_template",
+  "template": "mythosmortals:athenas_ruins",
+  "ignore_air": true,
+  "sink": 1,
+  "clear_vegetation": true,
+  "clear_above": true,
+  "fill_below": true,
+  "max_slope": 4,
+  "avoid_water": true,
+  "debug": true,
+  "biomes": "#mythosmortals:has_structure/athenas_ruins",
+  "step": "top_layer_modification",
+  "terrain_adaptation": "none",
+  "spawn_overrides": {}
+}

@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "mythosmortals:greek_amphora_olives",
+  "result": {
+    "id": "mythosmortals:greek_amphora_olive_oil"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

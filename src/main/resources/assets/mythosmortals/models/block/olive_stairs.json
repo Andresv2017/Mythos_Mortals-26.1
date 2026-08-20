@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/stairs",
+  "textures": {
+    "bottom": "mythosmortals:block/olive_planks",
+    "side": "mythosmortals:block/olive_planks",
+    "top": "mythosmortals:block/olive_planks"
+  }
+}

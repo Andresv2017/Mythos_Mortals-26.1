@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:paper",
+    "mythosmortals:bronze_ingot"
+  ],
+  "result": {
+    "id": "mythosmortals:sparta_banner_pattern"
+  }
+}

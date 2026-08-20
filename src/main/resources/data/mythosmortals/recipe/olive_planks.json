@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "planks",
+  "ingredients": [ "#mythosmortals:olive_logs" ],
+  "result": { "count": 4, "id": "mythosmortals:olive_planks" }
+}

@@ -61,7 +61,7 @@ public final class MythosMortalsDatagen {
             add(MythosMortalsRegistry.ATHENIAN.get(), "Athenian Warrior");
 
             // Creative tab title + item display names (athenian_helmet -> "Athenian Helmet").
-            add("itemGroup.deluxelib.deluxe_armory", "Deluxe Armory");
+            add("itemGroup.mythosmortals.deluxe_armory", "Deluxe Armory");
             // The owl's upgrades read as a progression tier, so they are named for what they are
             // rather than auto-derived from their id. Named before autoItemNames, which skips
             // anything already given a name.
@@ -117,18 +117,29 @@ public final class MythosMortalsDatagen {
 
             // Efectos: la clave se escribe a mano porque DeluxeLangProvider sólo auto-nombra
             // items/bloques/entidades.
-            add("effect.deluxelib.boreal_courage", "Boreal Courage");
+            add("effect.mythosmortals.boreal_courage", "Boreal Courage");
 
             // Marca de la comida marinada — ver MarinatedFoodEvents#onTooltip.
-            add("tooltip.deluxelib.marinated", "Marinated in olive oil");
-            add("tooltip.deluxelib.marinated.effect", "+2 hunger, +50% saturation");
+            add("tooltip.mythosmortals.marinated", "Marinated in olive oil");
+            add("tooltip.mythosmortals.marinated.effect", "+2 hunger, +50% saturation");
 
             // Keybinds (Athena's Sight owl possession).
-            add("key.deluxelib.athena_sight", "Toggle Athena's Sight");
+            add("key.mythosmortals.athena_sight", "Toggle Athena's Sight");
 
             // Advancements.
-            add("advancement.deluxelib.athena_sight.title", "Athena's Sight");
-            add("advancement.deluxelib.athena_sight.description", "Grant the Bronze Owl the sight of Athena");
+            add("advancement.mythosmortals.athena_sight.title", "Athena's Sight");
+            add("advancement.mythosmortals.athena_sight.description", "Grant the Bronze Owl the sight of Athena");
+
+            // Config screen (from the MDK scaffold's Config.java) — hand-authored, not derivable
+            // from a registry, so it lives here rather than in src/main/resources to avoid a
+            // duplicate assets/mythosmortals/lang/en_us.json between generated and hand-authored.
+            add("mythosmortals.configuration.title", "Mythos & Mortals Configs");
+            add("mythosmortals.configuration.section.mythosmortals.common.toml", "Mythos & Mortals Configs");
+            add("mythosmortals.configuration.section.mythosmortals.common.toml.title", "Mythos & Mortals Configs");
+            add("mythosmortals.configuration.items", "Item List");
+            add("mythosmortals.configuration.logDirtBlock", "Log Dirt Block");
+            add("mythosmortals.configuration.magicNumberIntroduction", "Magic Number Text");
+            add("mythosmortals.configuration.magicNumber", "Magic Number");
 
             // Patrones de estandarte. No hay ítem ni bloque que auto-nombrar: BannerPatternLayers
             // arma la clave del tooltip como "<translation_key>.<color>", así que cada patrón
@@ -142,7 +153,7 @@ public final class MythosMortalsDatagen {
             bannerPatternNames("sparta", "Lambda");
         }
 
-        /** Una entrada por tinte para {@code block.deluxelib.banner.<id>.<color>}. */
+        /** Una entrada por tinte para {@code block.mythosmortals.banner.<id>.<color>}. */
         private void bannerPatternNames(String id, String name) {
             for (DyeColor color : DyeColor.values()) {
                 add("block." + MythosMortals.MODID + ".banner." + id + "." + color.getName(),

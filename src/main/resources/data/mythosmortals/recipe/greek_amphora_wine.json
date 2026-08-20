@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "mythosmortals:greek_amphora_grapes",
+  "result": {
+    "id": "mythosmortals:greek_amphora_wine"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

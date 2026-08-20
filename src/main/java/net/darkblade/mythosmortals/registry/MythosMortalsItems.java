@@ -1,7 +1,7 @@
 package net.darkblade.mythosmortals.registry;
 
 import net.darkblade.mythosmortals.MythosMortals;
-import net.darkblade.deluxelib.test.spear.DoriSpearItem;
+import net.darkblade.mythosmortals.content.spear.DoriSpearItem;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -30,15 +30,13 @@ import java.util.Optional;
  * Mythos & Mortals's items and its creative-mode tab, built on DeluxeLib's item-side library
  * features (see {@link MythosMortalsRegistry} for the mobs using its entity-side ones).
  *
- * <p>Registry ids now live under this mod's own namespace ({@code mythosmortals:athenian_helmet},
+ * <p>Registry ids live under this mod's own namespace ({@code mythosmortals:athenian_helmet},
  * {@code mythosmortals:deluxe_armory}, …) rather than DeluxeLib's — this class registers under
- * {@link MythosMortals#MODID}, not {@code DeluxeLib.ID} any more. The model/texture/lang/datagen
- * files still need to move out of {@code assets/deluxelib/**} into {@code assets/mythosmortals/**}
- * to match, or these ids won't resolve to anything.
+ * {@link MythosMortals#MODID}, not {@code DeluxeLib.ID}.
  *
  * <p>The two helmets are plain {@link Item}s whose in-hand / inventory appearance is driven by the
- * hand-authored 3D models under {@code assets/mythosmortals/models/item/} (once moved). They are
- * grouped in a dedicated creative tab ("Deluxe Armory") that uses the Athenian helmet as its icon.</p>
+ * hand-authored 3D models under {@code assets/mythosmortals/models/item/}. They are grouped in a
+ * dedicated creative tab ("Deluxe Armory") that uses the Athenian helmet as its icon.</p>
  */
 public final class MythosMortalsItems {
 
@@ -159,7 +157,7 @@ public final class MythosMortalsItems {
 
     /**
      * Aceite de oliva: <b>no se bebe</b>. Es el ingrediente del marinado (ver
-     * {@link net.darkblade.deluxelib.test.amphora.MarinatingRecipe}), así que no lleva ni comida ni
+     * {@link net.darkblade.mythosmortals.content.amphora.MarinatingRecipe}), así que no lleva ni comida ni
      * {@code Consumable} — beberse el aceite a morro no es una receta griega.
      *
      * <p>Una botella marina hasta 8 comidas <b>de una tacada</b>: rodéala de pescado en la mesa de
@@ -171,7 +169,7 @@ public final class MythosMortalsItems {
 
     /**
      * Vino griego. Todo lo que es datos va en las propiedades, calcadas de la botella de miel de
-     * vanilla; el efecto y su castigo viven en {@link net.darkblade.deluxelib.test.amphora.WineEvents},
+     * vanilla; el efecto y su castigo viven en {@link net.darkblade.mythosmortals.content.amphora.WineEvents},
      * porque dependen de cuándo fue el trago anterior y eso no cabe en un componente.
      *
      * <p>{@code stacksTo(1)}: si las botellas se apilaran, el ánfora perdería su gracia — cuatro
@@ -235,7 +233,7 @@ public final class MythosMortalsItems {
     /** The "Deluxe Armory" creative tab, iconed with the Athenian helmet. */
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ARMORY_TAB =
         CREATIVE_TABS.register("deluxe_armory", () -> CreativeModeTab.builder()
-            .title(Component.translatable("itemGroup.deluxelib.deluxe_armory"))
+            .title(Component.translatable("itemGroup.mythosmortals.deluxe_armory"))
             .icon(() -> new ItemStack(ATHENIAN_HELMET.get()))
             .displayItems((params, output) -> {
                 output.accept(ATHENIAN_HELMET.get());

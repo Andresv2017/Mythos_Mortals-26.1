@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "age=0,half=lower": { "model": "mythosmortals:block/grape_vine_stage0" },
+    "age=0,half=upper": { "model": "mythosmortals:block/grape_vine_stage0" },
+    "age=1,half=lower": { "model": "mythosmortals:block/grape_vine_stage1" },
+    "age=1,half=upper": { "model": "mythosmortals:block/grape_vine_stage1" },
+    "age=2,half=lower": { "model": "mythosmortals:block/grape_vine_stage2" },
+    "age=2,half=upper": { "model": "mythosmortals:block/grape_vine_stage2" }
+  }
+}

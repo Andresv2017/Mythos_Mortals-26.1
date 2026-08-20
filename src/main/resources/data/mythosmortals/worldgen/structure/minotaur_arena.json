@@ -1,0 +1,9 @@
+{
+  "type": "mythosmortals:marked_template",
+  "template": "mythosmortals:minotaur_arena",
+  "depth_below_surface": 35,
+  "biomes": "#mythosmortals:has_structure/minotaur_arena",
+  "step": "underground_structures",
+  "terrain_adaptation": "none",
+  "spawn_overrides": {}
+}

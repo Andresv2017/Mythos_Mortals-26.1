@@ -1,0 +1,16 @@
+{
+  "type": "mythosmortals:marked_template",
+  "template": "mythosmortals:arpy_nests",
+  "peak_siting": {
+    "min_y": 100,
+    "min_prominence": 25,
+    "max_neighbour_rise": 8,
+    "max_carve": 16,
+    "solid_ratio": 0.8,
+    "debug": false
+  },
+  "biomes": "#mythosmortals:has_structure/arpy_nests",
+  "step": "surface_structures",
+  "terrain_adaptation": "beard_thin",
+  "spawn_overrides": {}
+}

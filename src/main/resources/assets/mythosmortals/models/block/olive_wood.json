@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "mythosmortals:block/olive_log",
+    "side": "mythosmortals:block/olive_log"
+  }
+}

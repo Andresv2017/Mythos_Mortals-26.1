@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "mythosmortals:block/smooth_marble",
+    "side": "mythosmortals:block/marble_pillar"
+  }
+}

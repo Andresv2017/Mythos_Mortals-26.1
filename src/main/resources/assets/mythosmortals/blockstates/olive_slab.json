@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "mythosmortals:block/olive_slab"
+    },
+    "type=double": {
+      "model": "mythosmortals:block/olive_planks"
+    },
+    "type=top": {
+      "model": "mythosmortals:block/olive_slab_top"
+    }
+  }
+}

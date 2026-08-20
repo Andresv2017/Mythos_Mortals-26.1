@@ -8,41 +8,41 @@ import net.darkblade.deluxelib.client.render.HelmetInteriors;
 import net.darkblade.deluxelib.client.render.ShieldPoseNudges;
 import net.darkblade.deluxelib.client.render.ThrownWeaponRenderer;
 import net.darkblade.deluxelib.spawn.DeluxeBiomeSpawns;
-import net.darkblade.deluxelib.test.amphora.FilledAmphoraBlock;
-import net.darkblade.deluxelib.test.amphora.GreekAmphoraBlock;
-import net.darkblade.deluxelib.test.amphora.MarinatingRecipe;
-import net.darkblade.deluxelib.test.arpy.ArpyEntity;
-import net.darkblade.deluxelib.test.arpy.ArpyModel;
-import net.darkblade.deluxelib.test.arpy.ArpyRenderer;
-import net.darkblade.deluxelib.test.athenian.AthenianEntity;
-import net.darkblade.deluxelib.test.effect.BorealCourageEffect;
-import net.darkblade.deluxelib.test.athenian.AthenianHelmetInteriorModel;
-import net.darkblade.deluxelib.test.athenian.AthenianModel;
-import net.darkblade.deluxelib.test.athenian.AthenianRenderer;
-import net.darkblade.deluxelib.test.minotaur.MinotaurEntity;
-import net.darkblade.deluxelib.test.minotaur.MinotaurModel;
-import net.darkblade.deluxelib.test.minotaur.MinotaurRenderer;
-import net.darkblade.deluxelib.test.owl.CopperOwlModel;
-import net.darkblade.deluxelib.test.owl.OwlEntity;
-import net.darkblade.deluxelib.test.owl.OwlRenderer;
-import net.darkblade.deluxelib.test.owl.network.OwlAttackServerPacket;
-import net.darkblade.deluxelib.test.owl.network.OwlMarkServerPacket;
-import net.darkblade.deluxelib.test.owl.network.OwlOrderAttackServerPacket;
-import net.darkblade.deluxelib.test.owl.network.OwlSonicAttackServerPacket;
-import net.darkblade.deluxelib.test.owl.statue.OwlStatueBlock;
-import net.darkblade.deluxelib.test.owl.statue.OwlStatueClient;
-import net.darkblade.deluxelib.test.spartan.SpartanEntity;
-import net.darkblade.deluxelib.test.spartan.SpartanHelmetInteriorModel;
-import net.darkblade.deluxelib.test.spartan.SpartanModel;
-import net.darkblade.deluxelib.test.spartan.SpartanRenderer;
-import net.darkblade.deluxelib.test.spear.DoriSpearProjectileModel;
-import net.darkblade.deluxelib.test.spear.ThrownDoriSpear;
-import net.darkblade.deluxelib.test.structure.MarkedStructurePiece;
-import net.darkblade.deluxelib.test.structure.MarkedTemplateStructure;
-import net.darkblade.deluxelib.test.olive.OliveLeavesBlock;
-import net.darkblade.deluxelib.test.olive.OliveTree;
-import net.darkblade.deluxelib.test.vineyard.GrapeStakeBlock;
-import net.darkblade.deluxelib.test.vineyard.GrapeVineBlock;
+import net.darkblade.mythosmortals.content.amphora.FilledAmphoraBlock;
+import net.darkblade.mythosmortals.content.amphora.GreekAmphoraBlock;
+import net.darkblade.mythosmortals.content.amphora.MarinatingRecipe;
+import net.darkblade.mythosmortals.content.arpy.ArpyEntity;
+import net.darkblade.mythosmortals.content.arpy.ArpyModel;
+import net.darkblade.mythosmortals.content.arpy.ArpyRenderer;
+import net.darkblade.mythosmortals.content.athenian.AthenianEntity;
+import net.darkblade.mythosmortals.content.effect.BorealCourageEffect;
+import net.darkblade.mythosmortals.content.athenian.AthenianHelmetInteriorModel;
+import net.darkblade.mythosmortals.content.athenian.AthenianModel;
+import net.darkblade.mythosmortals.content.athenian.AthenianRenderer;
+import net.darkblade.mythosmortals.content.minotaur.MinotaurEntity;
+import net.darkblade.mythosmortals.content.minotaur.MinotaurModel;
+import net.darkblade.mythosmortals.content.minotaur.MinotaurRenderer;
+import net.darkblade.mythosmortals.content.owl.CopperOwlModel;
+import net.darkblade.mythosmortals.content.owl.OwlEntity;
+import net.darkblade.mythosmortals.content.owl.OwlRenderer;
+import net.darkblade.mythosmortals.content.owl.network.OwlAttackServerPacket;
+import net.darkblade.mythosmortals.content.owl.network.OwlMarkServerPacket;
+import net.darkblade.mythosmortals.content.owl.network.OwlOrderAttackServerPacket;
+import net.darkblade.mythosmortals.content.owl.network.OwlSonicAttackServerPacket;
+import net.darkblade.mythosmortals.content.owl.statue.OwlStatueBlock;
+import net.darkblade.mythosmortals.content.owl.statue.OwlStatueClient;
+import net.darkblade.mythosmortals.content.spartan.SpartanEntity;
+import net.darkblade.mythosmortals.content.spartan.SpartanHelmetInteriorModel;
+import net.darkblade.mythosmortals.content.spartan.SpartanModel;
+import net.darkblade.mythosmortals.content.spartan.SpartanRenderer;
+import net.darkblade.mythosmortals.content.spear.DoriSpearProjectileModel;
+import net.darkblade.mythosmortals.content.spear.ThrownDoriSpear;
+import net.darkblade.mythosmortals.content.structure.MarkedStructurePiece;
+import net.darkblade.mythosmortals.content.structure.MarkedTemplateStructure;
+import net.darkblade.mythosmortals.content.olive.OliveLeavesBlock;
+import net.darkblade.mythosmortals.content.olive.OliveTree;
+import net.darkblade.mythosmortals.content.vineyard.GrapeStakeBlock;
+import net.darkblade.mythosmortals.content.vineyard.GrapeVineBlock;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.object.boat.BoatModel;
 import net.minecraft.client.particle.SonicBoomParticle;
@@ -475,7 +475,7 @@ public final class MythosMortalsRegistry {
      * cartel</b>.
      */
     public static final WoodType OLIVE_WOOD_TYPE =
-        WoodType.register(new WoodType("deluxelib:olive", BlockSetType.OAK));
+        WoodType.register(new WoodType("mythosmortals:olive", BlockSetType.OAK));
 
     /**
      * Los cuatro bloques de cartel. Clases de vanilla tal cual; lo único propio es el
@@ -773,7 +773,7 @@ public final class MythosMortalsRegistry {
 
     /** El marinado no es una receta sino una familia entera de ellas (una por comida marinable), así
      * que va como {@code CustomRecipe} con un serializador sin campos — ver
-     * {@link net.darkblade.deluxelib.test.amphora.MarinatingRecipe}. */
+     * {@link net.darkblade.mythosmortals.content.amphora.MarinatingRecipe}. */
     public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<MarinatingRecipe>> MARINATING =
         RECIPE_SERIALIZERS.register("marinating",
             () -> new RecipeSerializer<>(MarinatingRecipe.MAP_CODEC, MarinatingRecipe.STREAM_CODEC));

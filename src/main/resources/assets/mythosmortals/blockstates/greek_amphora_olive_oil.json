@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "servings=1": { "model": "mythosmortals:block/greek_amphora_olive_oil" },
+    "servings=2": { "model": "mythosmortals:block/greek_amphora_olive_oil" },
+    "servings=3": { "model": "mythosmortals:block/greek_amphora_olive_oil" },
+    "servings=4": { "model": "mythosmortals:block/greek_amphora_olive_oil" }
+  }
+}

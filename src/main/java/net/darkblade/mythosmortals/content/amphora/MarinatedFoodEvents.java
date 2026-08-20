@@ -84,12 +84,12 @@ public final class MarinatedFoodEvents {
         if (!event.getItemStack().has(MythosMortalsRegistry.MARINATED.get())) {
             return;
         }
-        event.getToolTip().add(Component.translatable("tooltip.deluxelib.marinated")
+        event.getToolTip().add(Component.translatable("tooltip.mythosmortals.marinated")
             .withStyle(ChatFormatting.GRAY));
         // Los números van escritos porque no se deducen de ningún sitio: el bono no vive en el
         // componente FOOD del ítem, así que la barra de muslos del tooltip sigue mostrando la comida
         // sin marinar.
-        event.getToolTip().add(Component.translatable("tooltip.deluxelib.marinated.effect")
+        event.getToolTip().add(Component.translatable("tooltip.mythosmortals.marinated.effect")
             .withStyle(ChatFormatting.DARK_GRAY));
     }
 

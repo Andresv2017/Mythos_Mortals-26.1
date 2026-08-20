@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "mythosmortals:blocks/stripped_olive_wood",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "bonus_rolls": 0.0,
+      "conditions": [
+        { "condition": "minecraft:survives_explosion" }
+      ],
+      "entries": [
+        { "type": "minecraft:item", "name": "mythosmortals:stripped_olive_wood" }
+      ]
+    }
+  ]
+}

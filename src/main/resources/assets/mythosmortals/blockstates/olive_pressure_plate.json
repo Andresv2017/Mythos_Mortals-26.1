@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "mythosmortals:block/olive_pressure_plate"
+    },
+    "powered=true": {
+      "model": "mythosmortals:block/olive_pressure_plate_down"
+    }
+  }
+}
