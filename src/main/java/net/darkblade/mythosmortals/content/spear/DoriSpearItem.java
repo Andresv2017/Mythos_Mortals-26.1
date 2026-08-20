@@ -14,25 +14,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
 
-/**
- * The Dori spear item — the demo's worked example of {@link ThrownWeaponItem}. Holding right-click
- * charges a throw and releasing launches a {@link ThrownDoriSpear}; all of that is the base class's.
- * What's left here is what kind of weapon this is, plus how to build its projectile.
- *
- * <p>Melee attacks (plain left-click) use {@link #createAttributes()} — flat attribute modifiers, the
- * same mechanism as {@code TridentItem.createAttributes()} — so they don't interfere with the
- * charge-and-throw flow.
- */
 public class DoriSpearItem extends ThrownWeaponItem {
 
     public DoriSpearItem(Item.Properties properties) {
         super(properties);
     }
 
-    /**
-     * Heavier and slower than a sword, matching a two-handed spear: +4 damage, -2.8 speed, and
-     * +1.5 entity-interaction range (3.0 base -> 4.5) so it actually hits farther than a sword.
-     */
     public static ItemAttributeModifiers createAttributes() {
         return ItemAttributeModifiers.builder()
             .add(Attributes.ATTACK_DAMAGE, new AttributeModifier(BASE_ATTACK_DAMAGE_ID, 4.0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)

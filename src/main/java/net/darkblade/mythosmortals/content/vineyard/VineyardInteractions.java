@@ -16,23 +16,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * El único evento que necesita el viñedo: coloca el primer {@link GrapeStakeBlock} al hacer click
- * derecho con un palo de vanilla sobre tierra.
- *
- * <p>Existe <b>sólo</b> porque el palo y la tierra son bloques e ítems de vanilla y no hay dónde
- * meterles código. Todo lo demás (apilar el segundo poste, plantar la uva) vive en el
- * {@code useItemOn} de nuestros propios bloques, que es el sitio idiomático.
- *
- * <p>Escucha la fase {@link UseItemOnBlockEvent.UsePhase#ITEM_AFTER_BLOCK}, la última de las tres.
- * Es la correcta: la tierra de vanilla no consume la acción, así que la cadena de
- * {@code ServerPlayerGameMode#useItemOn} llega hasta aquí sin que nadie la corte. Y como es la
- * última fase, si algún día el jugador tiene en la mano un ítem que sí quiere hacer algo con la
- * tierra, ese ítem gana — no le robamos la interacción.
- *
- * <p>El evento dispara en cliente y servidor. La colocación se hace sólo en servidor; el cliente se
- * limita a devolver {@code SUCCESS} para que el brazo se mueva y espera el paquete de bloque.
- */
 @EventBusSubscriber(modid = MythosMortals.MODID)
 public final class VineyardInteractions {
 
@@ -45,8 +28,6 @@ public final class VineyardInteractions {
         if (!itemStack.is(Items.STICK)) {
             return;
         }
-        // Sólo la cara de arriba: clicar el lateral de un bloque de tierra no debe plantar un poste
-        // flotando al lado.
         if (event.getFace() != Direction.UP) {
             return;
         }
