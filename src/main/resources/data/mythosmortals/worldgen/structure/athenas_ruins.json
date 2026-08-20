@@ -2,7 +2,7 @@
   "type": "mythosmortals:marked_template",
   "template": "mythosmortals:athenas_ruins",
   "ignore_air": true,
-  "sink": 1,
+  "sink": 0,
   "clear_vegetation": true,
   "clear_above": true,
   "fill_below": true,

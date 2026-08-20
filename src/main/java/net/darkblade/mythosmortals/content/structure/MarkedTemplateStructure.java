@@ -55,8 +55,10 @@ public class MarkedTemplateStructure extends Structure {
     /** Paso de la rejilla con la que se busca la columna más alta dentro del chunk. */
     private static final int CHUNK_SCAN_STEP = 5;
 
-    /** Sondeos por lado sobre la huella. Vanilla usa 4 columnas en total en {@code getLowestY};
-     * 25 es seis veces más caro pero es lo mínimo para saber si hay meseta o sólo una aguja. */
+    /** Sondeos por lado sobre la huella, en {@link #findPeak} y en el chequeo de agua/desnivel de
+     * {@link #findFlat}. Vanilla usa 4 columnas en total en {@code getLowestY}; 25 es seis veces
+     * más caro pero es lo mínimo para saber si hay meseta o sólo una aguja — o si hay una charca a
+     * medio camino entre el centro y el borde que un anillo pegado a la esquina no vería. */
     private static final int FOOTPRINT_SAMPLES = 5;
 
     /** Margen que se limpia por encima de la cima muestreada, por si entre sondeo y sondeo quedaba
@@ -209,30 +211,31 @@ public class MarkedTemplateStructure extends Structure {
                     }
                 }
 
-                int span = Math.max(size.getX(), size.getZ()) / 2;
+                // Rejilla sobre TODA la huella, no sólo su borde: una charca a medio camino entre el
+                // centro y el borde no la ve ni el sondeo del centro ni un anillo pegado a la esquina.
+                // Mismo patrón que el paso 5 de findPeak, reutilizando FOOTPRINT_SAMPLES.
+                int halfX = size.getX() / 2;
+                int halfZ = size.getZ() / 2;
                 int lowest = surface;
                 int highest = surface;
-                for (int dx = -1; dx <= 1; dx++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        if (dx == 0 && dz == 0) {
-                            continue;
-                        }
-                        int ringX = centerX + dx * span;
-                        int ringZ = centerZ + dz * span;
-                        int corner = surfaceAt(context, ringX, ringZ);
+                for (int sx = 0; sx < FOOTPRINT_SAMPLES; sx++) {
+                    for (int sz = 0; sz < FOOTPRINT_SAMPLES; sz++) {
+                        int x = centerX - halfX + (size.getX() - 1) * sx / (FOOTPRINT_SAMPLES - 1);
+                        int z = centerZ - halfZ + (size.getZ() - 1) * sz / (FOOTPRINT_SAMPLES - 1);
+                        int sample = surfaceAt(context, x, z);
 
-                        // Media estructura en tierra y la otra media metida en el lago es justo lo
-                        // que sale si sólo se mira el centro, así que el anillo también cuenta.
-                        if (this.avoidWater && groundAt(context, ringX, ringZ) < corner) {
+                        // Media estructura en tierra y la otra mitad metida en el lago es justo lo
+                        // que sale si sólo se mira el centro, así que toda la rejilla cuenta.
+                        if (this.avoidWater && groundAt(context, x, z) < sample) {
                             if (this.debug) {
-                                LOGGER.info("[flat] {} RECHAZADO en {}: agua en el borde de la huella ({},{})",
-                                    this.template, chunkPos, ringX, ringZ);
+                                LOGGER.info("[flat] {} RECHAZADO en {}: agua dentro de la huella ({},{})",
+                                    this.template, chunkPos, x, z);
                             }
                             return Optional.empty();
                         }
 
-                        lowest = Math.min(lowest, corner);
-                        highest = Math.max(highest, corner);
+                        lowest = Math.min(lowest, sample);
+                        highest = Math.max(highest, sample);
                     }
                 }
 
