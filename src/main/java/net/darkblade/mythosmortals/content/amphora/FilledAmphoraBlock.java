@@ -26,32 +26,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Supplier;
 
-/**
- * El Ánfora Griega con producto dentro — vino o aceite de oliva — servida a botellas.
- *
- * <p><b>Una sola clase para los dos productos.</b> Lo único que los distingue es qué botella
- * reparten, así que eso es lo que se pasa al constructor. Un {@link Supplier} y no el {@link Item}
- * directo porque el bloque se construye durante el {@code RegisterEvent} de bloques, cuando los
- * ítems todavía no existen: resolverlo ahí sería un {@code null}.
- *
- * <p>Cada click derecho con una botella de cristal vacía entrega una botella llena y gasta una
- * ración de {@link #SERVINGS}. Al gastar la última, el bloque vuelve a ser un
- * {@link GreekAmphoraBlock} vacío en vez de desaparecer: <b>la vasija se conserva</b>. El ánfora es
- * cerámica reutilizable; lo que se consume es el contenido, no el barro.
- *
- * <p><b>Del bloque colocado no se bebe.</b> Embotellar es lo único que hace aquí. Para beber, el
- * ánfora se coge y se bebe en la mano como una botella de agua — con su animación y su aguantar el
- * click — y eso vive en las propiedades del {@code BlockItem} más
- * {@link WineEvents#onUseItemFinish}, no en este bloque. Hubo una versión que bebía por
- * {@code useWithoutItem} y se retiró: no había animación, y como {@code useWithoutItem} se llama
- * lleves lo que lleves, obligaba a una guarda de mano vacía para no beberse el vino cada vez que
- * intentabas colocar un bloque apoyado en el ánfora.
- *
- * <p><b>Las raciones sobreviven al pico.</b> No por código de aquí, sino por la loot table, que usa
- * {@code minecraft:copy_state} sobre {@link #SERVINGS} para grabarlas en el componente
- * {@code block_state} del ítem que cae; el {@code BlockItem} las restaura al recolocar. Sin eso,
- * romper un ánfora a medio servir y volver a ponerla la devolvería llena, que es vino infinito.
- */
 public class FilledAmphoraBlock extends Block {
 
     public static final MapCodec<FilledAmphoraBlock> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -59,8 +33,6 @@ public class FilledAmphoraBlock extends Block {
         propertiesCodec()
     ).apply(i, (product, properties) -> new FilledAmphoraBlock(() -> product, properties)));
 
-    /** Cuántas botellas quedan por servir. Empieza en {@link #MAX_SERVINGS} y nunca llega a 0: al
-     * servir la última, el bloque se sustituye por el ánfora vacía. */
     public static final IntegerProperty SERVINGS = IntegerProperty.create("servings", 1, 4);
 
     public static final int MAX_SERVINGS = 4;
@@ -94,11 +66,6 @@ public class FilledAmphoraBlock extends Block {
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
-
-        // createFilledResult resuelve de una vez los tres casos molestos: en creativo no gasta la
-        // botella vacía y sólo añade la llena si no la tienes ya; con un stack de una sola botella
-        // devuelve la llena para ponerla en la mano; y con un stack mayor la mete al inventario o la
-        // tira al suelo si no cabe. Es el mismo helper que usan la botella de miel y el cubo.
         player.setItemInHand(hand,
             ItemUtils.createFilledResult(itemStack, player, new ItemStack(product.get())));
 
@@ -108,8 +75,6 @@ public class FilledAmphoraBlock extends Block {
         return InteractionResult.SUCCESS;
     }
 
-    /** Descuenta una ración. Al gastar la última deja el ánfora vacía en su sitio — la vasija se
-     * conserva, lo que se acaba es el contenido. */
     private static void takeServing(BlockState state, Level level, BlockPos pos) {
         int left = state.getValue(SERVINGS);
         if (left > 1) {

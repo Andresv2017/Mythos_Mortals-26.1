@@ -9,10 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Embestida C) Impacto exitoso: cabezazo ascendente que lanza por los aires a
- * quien atropelló, mientras el minotauro frena su inercia.
- */
+
 public class ChargeHitBehavior implements Behavior<MinotaurEntity, MinotaurState> {
 
     @Override
@@ -21,7 +18,6 @@ public class ChargeHitBehavior implements Behavior<MinotaurEntity, MinotaurState
 
         final Vec3 direction = context.get(MinotaurCtx.CHARGE_DIRECTION);
 
-        // Daña y lanza a todos los que quedaron delante de los cuernos
         for (final LivingEntity victim : entity.level().getEntitiesOfClass(
                 LivingEntity.class,
                 entity.getBoundingBox().inflate(1.2, 0.5, 1.2).move(direction.scale(0.8)),
@@ -29,13 +25,12 @@ public class ChargeHitBehavior implements Behavior<MinotaurEntity, MinotaurState
 
             victim.hurt(entity.damageSources().mobAttack(entity), MinotaurCtx.CHARGE_DAMAGE);
             victim.setDeltaMovement(direction.x * 1.1, 0.85, direction.z * 1.1);
-            victim.hurtMarked = true; // fuerza el sync de velocity al cliente (lanzamiento visible)
+            victim.hurtMarked = true;
         }
     }
 
     @Override
     public @Nullable Integer tick(MinotaurEntity entity, BehaviorContext context) {
-        // Frenado paulatino de la inercia de la carrera
         entity.setDeltaMovement(entity.getDeltaMovement().multiply(0.8, 1.0, 0.8));
 
         if (context.ticksInState() >= MinotaurCtx.CHARGE_HIT_TICKS) {

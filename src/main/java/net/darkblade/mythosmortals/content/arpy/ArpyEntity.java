@@ -41,7 +41,6 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
     private static final EntityDataAccessor<Boolean> IS_ARMORED =
             SynchedEntityData.defineId(ArpyEntity.class, EntityDataSerializers.BOOLEAN);
 
-    /** Un solo id para los tres modificadores: reaplicarlos sustituye en vez de acumular. */
     private static final Identifier ARMORED_ID = Identifier.fromNamespaceAndPath(MythosMortals.MODID, "armored");
 
     private static final AttributeModifier ARMORED_HEALTH =
@@ -94,41 +93,23 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
     @Override
     public boolean isArmored() {return this.entityData.get(IS_ARMORED);}
 
-    /**
-     * La armadura no es sólo cosmética: aplica los modificadores de {@link #ARMORED_HEALTH},
-     * {@link #ARMORED_ARMOR} y {@link #ARMORED_DAMAGE}, así que una arpía blindada es más dura
-     * venga de donde venga —de una estructura, de un spawn natural o de un comando.
-     */
     @Override
     public void setArmored(boolean armored) {
         this.entityData.set(IS_ARMORED, armored);
         this.updateArmoredModifiers(armored);
     }
 
-    /**
-     * Los tres modificadores comparten un {@link net.minecraft.resources.Identifier} fijo, así que
-     * nunca se acumulan por muchas veces que se llame aquí.
-     * <br><br>
-     * Se comprueba si el modificador ya está antes de añadirlo, y eso no es paranoia: vanilla
-     * serializa los modificadores permanentes en el NBT {@code attributes} y los restaura antes de
-     * leer {@code Health}. Un {@code addOrReplacePermanentModifier} a ciegas quitaría y volvería a
-     * poner el de {@code MAX_HEALTH}, y en ese hueco el máximo baja a 20 y la vida guardada se
-     * recorta. Una arpía blindada a 28 acabaría a 20 tras cada recarga del chunk.
-     */
     private void updateArmoredModifiers(boolean armored) {
         boolean added = false;
         added |= this.updateModifier(Attributes.MAX_HEALTH, ARMORED_HEALTH, armored);
         added |= this.updateModifier(Attributes.ARMOR, ARMORED_ARMOR, armored);
         added |= this.updateModifier(Attributes.ATTACK_DAMAGE, ARMORED_DAMAGE, armored);
 
-        // Sólo en la transición real a blindada, no al recargarla del disco: si no, una arpía
-        // herida se curaría entera cada vez que su chunk vuelve a cargarse.
         if (armored && added) {
             this.setHealth(this.getMaxHealth());
         }
     }
 
-    /** @return true si este modificador se acaba de añadir (no si ya estaba) */
     private boolean updateModifier(Holder<Attribute> attribute, AttributeModifier modifier, boolean apply) {
         AttributeInstance instance = this.getAttribute(attribute);
         if (instance == null) {
@@ -160,16 +141,8 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
     @Override
     protected double getWanderHorizontalRadius() { return 24.0; }
 
-    /** A qué distancia tiene que estar un jugador para que una arpía de nido levante el vuelo. */
     private static final double NEST_WAKE_RANGE = 24.0;
 
-    /**
-     * Las arpías de un nido esperan posadas a que llegue alguien; las salvajes —las que no tienen
-     * hogar— vuelan como siempre.
-     * <br><br>
-     * Ojo al probarlo: {@code getNearestPlayer(Entity, double)} descarta espectadores, así que en
-     * modo espectador no despegarán por mucho que te pongas encima.
-     */
     @Override
     protected boolean shouldStayGrounded() {
         if (!this.hasHome() || this.getTarget() != null) {
@@ -193,7 +166,6 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
     @Override
     protected double getLandingApproachAltitude() { return 0.45; }
 
-    /** The authored take_off animation owns the pose — no physics nose-up on top of it. */
     @Override
     protected boolean applyTiltDuringTakeoff() { return false; }
 
@@ -246,7 +218,6 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         this.targetSelector.addGoal(2, new HurtByTargetGoal(this));
     }
 
-    /** Waits for the take_off animation to finish before entering the soaring phase. */
     private class ArpyTakeoffGoal extends TakeoffGoal {
         @Override
         public boolean canUse() {
@@ -262,14 +233,6 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         }
     }
 
-    /**
-     * Aerial dive-bomb attack. Repositions to an attack altitude above the target, dives in
-     * {@code dive_attack} (talons + bite), strikes on contact, then pulls out in
-     * {@code dive_attack_return} — climbing back up <em>without touching the ground</em> to
-     * repeat from a fresh angle. Uses direct velocity control (navigation stopped) so the dive
-     * trajectory is precise; {@code fly_sprint_angry} plays on the reposition/climb legs by way
-     * of the {@code isAggressive + isFlyingMoving} conditions.
-     */
     private class DiveAttackGoal extends Goal {
         private enum Phase { REPOSITION, ALIGN, DIVE, PULLUP }
 
@@ -364,10 +327,6 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
             }
         }
 
-        /** Turn to face the target in normal (angry) flight pose before committing to the dive:
-         * a gentle forward drift keeps fly_sprint_angry on (a full hover would drop to the neutral
-         * idle_fly pose), and {@code isDiving} stays false until already pointed at the target — so
-         * the dive pose only appears for the actual fall, not for the mid-air pivot. */
         private void tickAlign(@NotNull LivingEntity target) {
             double dx = target.getX() - getX();
             double dz = target.getZ() - getZ();

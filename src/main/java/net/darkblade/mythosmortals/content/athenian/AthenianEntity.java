@@ -95,7 +95,6 @@ public class AthenianEntity extends GuardingMeleeEntity {
         return 20.0F;
     }
 
-    /** Punish window: a staggered Athenian takes 50% more damage until it recovers. */
     @Override
     public float staggeredDamageMultiplier() {
         return 1.5F;

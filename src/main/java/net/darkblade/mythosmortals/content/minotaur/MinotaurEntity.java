@@ -14,7 +14,6 @@ import net.darkblade.deluxelib.entity.ai.cortex.behavior.BehaviorContext;
 import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.AnimatedMeleeBehavior;
 import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.ChaseTargetBehavior;
 import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.GuardBehavior;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.TimedAnimationBehavior;
 import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.WanderBehavior;
 import net.darkblade.deluxelib.entity.ai.cortex.target.impl.CompositeTargeting;
 import net.darkblade.deluxelib.entity.ai.cortex.target.impl.HurtByAttackerTargeting;
@@ -26,9 +25,10 @@ import net.darkblade.mythosmortals.content.minotaur.behavior.ChargeHitBehavior;
 import net.darkblade.mythosmortals.content.minotaur.behavior.ChargeRunBehavior;
 import net.darkblade.mythosmortals.content.minotaur.behavior.ChargeStunBehavior;
 import net.darkblade.mythosmortals.content.minotaur.behavior.ChargeWindupBehavior;
+import net.darkblade.mythosmortals.content.minotaur.behavior.PushBehavior;
+import net.darkblade.mythosmortals.content.minotaur.behavior.SpottedRoarBehavior;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -41,19 +41,17 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Mini-boss minotauro: esqueleto de cableado del sistema Cortex + MobAnimator.
+ * Minotaur mini-boss: Cortex FSM + MobAnimator wiring.
  *
- * <p>El boilerplate (sync de estado, reenvío de eventos al FSM, goal del cortex)
- * vive en {@link CortexMonster}. Aquí solo queda lo propio del minotauro: su
- * repertorio de ataques ({@link #pickAttack}), la embestida y las animaciones.</p>
- *
- * <p>La locomoción (idle/walk/run/combat_idle) ya tiene keyframes de Blockbench; el resto
- * sigue registrado con sus duraciones y HitWindows pero con el supplier en {@code null}
- * (ver TODO en {@link #registerAnimations()}).</p>
+ * <p>Half the repertoire has no keyframes yet. Those clips still run server-side (duration, hit
+ * windows, sync) and are narrated by {@link MinotaurAnimDebug} instead of drawn.</p>
  */
 public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState> implements Animatable<MinotaurEntity> {
 
     private final MobAnimator<MinotaurEntity> animator;
+
+    /** Per-entity: remembers the previous state to detect transitions. */
+    private final MinotaurAnimDebug debug = new MinotaurAnimDebug(this);
 
     public MinotaurEntity(EntityType<? extends MinotaurEntity> type, Level level) {
         super(type, level);
@@ -61,9 +59,24 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         this.moveControl = new DirectionalMoveControl<>(this).setTurnSpeed(6.0F).setCombatTurnSpeed(40.0F);
     }
 
+    /**
+     * Attacks are thrown from a standstill and every hitbox aims along yBodyRot, so the default
+     * 0.08 damping left the swing pointing ~30° off after faceTargetUntil expired.
+     */
     @Override
     protected BodyRotationControl createBodyControl() {
-        return new SmoothBodyRotationControl<>(this);
+        final SmoothBodyRotationControl<MinotaurEntity> control = new SmoothBodyRotationControl<>(this);
+        control.bodyLagStill = MinotaurCtx.BODY_TURN_STILL;
+        return control;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if ((MinotaurCtx.DEBUG_ANIM_ACTION_BAR || MinotaurCtx.DEBUG_ANIM_CONSOLE)
+                && !this.level().isClientSide()) {
+            this.debug.tick();
+        }
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -77,13 +90,11 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .add(Attributes.STEP_HEIGHT, 1.0);
     }
 
-    // ------------------------------------------------------------------
-    // Montar (demo del sistema rider pose): click derecho monta al jugador
-    // ------------------------------------------------------------------
+    // --- riding (rider pose demo), gated behind MinotaurCtx.ENABLE_RIDING ---
 
     @Override
     public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
-        if (!this.level().isClientSide() && !this.isVehicle()) {
+        if (MinotaurCtx.ENABLE_RIDING && !this.level().isClientSide() && !this.isVehicle()) {
             player.startRiding(this);
             return InteractionResult.SUCCESS;
         }
@@ -94,7 +105,10 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     @Override
     @Nullable
     public LivingEntity getControllingPassenger() {
-        return this.getFirstPassenger() instanceof Player player ? player : super.getControllingPassenger();
+        // Also gated: /ride could still hand the controls over otherwise.
+        return MinotaurCtx.ENABLE_RIDING && this.getFirstPassenger() instanceof Player player
+                ? player
+                : super.getControllingPassenger();
     }
 
     @Override
@@ -121,9 +135,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return (float) this.getAttributeValue(Attributes.MOVEMENT_SPEED);
     }
 
-    // ------------------------------------------------------------------
-    // FSM
-    // ------------------------------------------------------------------
+    // --- FSM ---
 
     @Override
     protected MinotaurState defaultState() {
@@ -136,40 +148,39 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .register(MinotaurState.IDLE,
                         new WanderBehavior<MinotaurEntity, MinotaurState>(MinotaurCtx.WALK_SPEED)
                                 .onTargetFound(MinotaurState.SPOTTED))
-                .register(MinotaurState.SPOTTED,
-                        new TimedAnimationBehavior<MinotaurEntity, MinotaurState>(
-                                "target_spotted", MinotaurCtx.SPOTTED_ROAR_TICKS, MinotaurState.COMBAT_IDLE)
-                                .faceTarget())
+                // Fixed opener: roar → charge, skipping pickAttack's cooldown check.
+                .register(MinotaurState.SPOTTED, new SpottedRoarBehavior())
                 .register(MinotaurState.CHASE,
                         new ChaseTargetBehavior<MinotaurEntity, MinotaurState>(MinotaurCtx.RUN_SPEED, MinotaurEntity::pickAttack)
                                 .guard(MinotaurState.COMBAT_IDLE, MinotaurCtx.MELEE_RANGE))
                 .register(MinotaurState.COMBAT_IDLE,
                         new GuardBehavior<MinotaurEntity, MinotaurState>(MinotaurEntity::pickAttack)
-                                .chase(MinotaurState.CHASE, MinotaurCtx.MELEE_RANGE + 1.0F))
-                // Combo horizontal: A encadena a B (75%) si el objetivo sigue en rango
+                                .chase(MinotaurState.CHASE, MinotaurCtx.ATTACK_RANGE))
+                // faceTargetUntil(3): the sweep starts at tick 3.3, so the facing must be
+                // committed by then or the damage arc and the drawn arc diverge.
                 .register(MinotaurState.ATTACK_HORIZONTAL_1,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_horizontal_1", 15, MinotaurState.COMBAT_IDLE)
-                                .faceTargetUntil(6)
-                                .combo(MinotaurState.ATTACK_HORIZONTAL_2, 0.75F, MinotaurCtx.MELEE_RANGE + 0.5F)
+                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_horizontal_1", MinotaurCtx.COMBO_A_TICKS, MinotaurState.COMBAT_IDLE)
+                                .faceTargetUntil(3)
+                                .combo(MinotaurState.ATTACK_HORIZONTAL_2, MinotaurCtx.COMBO_CHAIN_CHANCE, MinotaurCtx.COMBO_CHAIN_RANGE)
                                 .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
+                // Finishers are tried in order, so the short-range one goes first or the
+                // long-range one swallows its cases.
                 .register(MinotaurState.ATTACK_HORIZONTAL_2,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_horizontal_2", 15, MinotaurState.COMBAT_IDLE)
-                                .faceTargetUntil(4)
+                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_horizontal_2", MinotaurCtx.COMBO_B_TICKS, MinotaurState.COMBAT_IDLE)
+                                .faceTargetUntil(3)
+                                .combo(MinotaurState.ATTACK_PUSH, MinotaurCtx.COMBO_FINISHER_CHANCE, MinotaurCtx.PUSH_RANGE)
+                                .combo(MinotaurState.ATTACK_VERTICAL, MinotaurCtx.COMBO_FINISHER_CHANCE, MinotaurCtx.COMBO_CHAIN_RANGE)
                                 .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
                 .register(MinotaurState.ATTACK_VERTICAL,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_vertical", 35, MinotaurState.COMBAT_IDLE)
+                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_vertical", MinotaurCtx.VERTICAL_TICKS, MinotaurState.COMBAT_IDLE)
                                 .faceTargetUntil(16)
                                 .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
-                .register(MinotaurState.ATTACK_PUSH,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_push", 12, MinotaurState.COMBAT_IDLE)
-                                .faceTargetUntil(3)
-                                .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
+                .register(MinotaurState.ATTACK_PUSH, new PushBehavior())
                 .register(MinotaurState.CHARGE_WINDUP, new ChargeWindupBehavior())
                 .register(MinotaurState.CHARGE_RUN, new ChargeRunBehavior())
                 .register(MinotaurState.CHARGE_HIT, new ChargeHitBehavior())
                 .register(MinotaurState.CHARGE_STUN, new ChargeStunBehavior())
 
-                // Target muerto/perdido → volver al reposo, desde cualquier estado que lo permita
                 .globalRule((entity, ctx, currentStateId) -> {
                     final LivingEntity target = entity.getTarget();
                     if ((target == null || !target.isAlive()) && currentStateId != MinotaurState.IDLE.id()) {
@@ -178,20 +189,14 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                     return null;
                 })
 
-                // Saliendo del stun siempre pasa por la guardia: nunca ataca directo mareado
+                // Leaving the stun always goes through the guard.
                 .blockTransitions(MinotaurState.CHARGE_STUN,
                         MinotaurState.ATTACK_HORIZONTAL_1, MinotaurState.ATTACK_HORIZONTAL_2,
                         MinotaurState.ATTACK_VERTICAL, MinotaurState.ATTACK_PUSH,
                         MinotaurState.CHARGE_WINDUP)
 
-                // Adquisición de objetivo: el más cercano entre jugadores y cualquier
-                // GuardingMeleeEntity (atenienses, espartanos), o quien lo golpee.
-                //
-                // Un solo escaneo sobre LivingEntity con filtro, y no dos NearestEntityTargeting
-                // apilados, porque esos se pisarían: cada instancia solo conserva el target si es
-                // de SU clase (currentOfType) y si no lo reemplaza por el suyo sin comparar
-                // distancias, así que el último de la lista le robaría el objetivo al otro cada
-                // ciclo de retargeting aunque estuviera más lejos.
+                // One filtered LivingEntity scan, not two stacked NearestEntityTargeting: those
+                // only keep a target of their own class, so the last one would steal it every cycle.
                 .targeting(new CompositeTargeting<MinotaurEntity>(
                         new NearestEntityTargeting<MinotaurEntity, LivingEntity>(LivingEntity.class, 20.0, 10, true,
                                 candidate -> candidate instanceof Player player
@@ -203,9 +208,10 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     }
 
     /**
-     * Selección de ataque compartida por CHASE y COMBAT_IDLE (vía AttackSelector).
-     * Devuelve null si nada es viable (cooldowns / rango) y hay que seguir
-     * persiguiendo o guardando.
+     * Attack selection for CHASE and COMBAT_IDLE. Returns null when nothing is viable and the
+     * caller decides (keep chasing, hold the guard, resume the chase).
+     *
+     * <p>Branches are ordered, not exclusive: the first one that passes wins.</p>
      */
     @Nullable
     public MinotaurState pickAttack(BehaviorContext ctx) {
@@ -216,139 +222,136 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
 
         final long now = level().getGameTime();
         final double distance = distanceTo(target);
+        final boolean chargeReady = MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
+                && now >= ctx.get(MinotaurCtx.NEXT_CHARGE_TIME);
 
-        // Embestida: objetivo lejos y cooldown listo
-        if (distance >= MinotaurCtx.CHARGE_MIN_RANGE && now >= ctx.get(MinotaurCtx.NEXT_CHARGE_TIME)) {
+        // 1. Charge. The band has a ceiling as well as a floor — see CHARGE_MAX_RANGE.
+        if (chargeReady
+                && distance >= MinotaurCtx.CHARGE_MIN_RANGE
+                && distance <= MinotaurCtx.CHARGE_MAX_RANGE) {
             return MinotaurState.CHARGE_WINDUP;
+        }
+
+        // Out of every hitbox's reach: geometric limit, so it goes before the cooldown check.
+        if (distance > MinotaurCtx.ATTACK_RANGE) {
+            return null;
         }
 
         if (now < ctx.get(MinotaurCtx.NEXT_MELEE_TIME)) {
             return null;
         }
 
-        // Empuje reactivo cuando lo tienen encima
-        if (distance <= MinotaurCtx.PUSH_RANGE && getRandom().nextFloat() < 0.35F) {
+        // 2. Charge ready but too close to launch it: the push IS the setup. No dice here —
+        //    PushBehavior rolls them once the gap is actually open.
+        if (MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
+                && chargeReady && distance <= MinotaurCtx.PUSH_RANGE) {
             return MinotaurState.ATTACK_PUSH;
         }
 
-        if (distance <= MinotaurCtx.MELEE_RANGE) {
-            return getRandom().nextFloat() < 0.3F
-                    ? MinotaurState.ATTACK_VERTICAL
-                    : MinotaurState.ATTACK_HORIZONTAL_1;
+        // 3. Inside the axe's dead zone: the horizontal sector starts ahead of the mob and
+        //    cannot reach here, so the push is the only answer.
+        if (MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
+                && distance <= MinotaurCtx.PUSH_CONTACT_RANGE) {
+            return MinotaurState.ATTACK_PUSH;
         }
 
-        return null;
-    }
-
-    // ------------------------------------------------------------------
-    // Reacciones (el reenvío de eventos al FSM lo hace CortexMonster)
-    // ------------------------------------------------------------------
-
-    @Override
-    public boolean hurtServer(@NotNull net.minecraft.server.level.ServerLevel serverLevel, @NotNull DamageSource source, float amount) {
-        final boolean wasHurt = super.hurtServer(serverLevel, source, amount);
-
-        // Flinch de hurt solo fuera de los swings (super armor durante ataques/embestida)
-        if (wasHurt) {
-            final MinotaurState state = serverState();
-            if (state == MinotaurState.IDLE || state == MinotaurState.CHASE
-                    || state == MinotaurState.COMBAT_IDLE || state == MinotaurState.CHARGE_STUN) {
-                this.animator.play(this.animator.getByName("hurt"));
-            }
+        // 4. Vertical. Chosen closer than the horizontal even though it reaches further (~6.3
+        //    vs ~4.9): the extra reach comes from lunging, so it catches whoever backs off.
+        if (MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
+                && distance <= MinotaurCtx.VERTICAL_RANGE
+                && getRandom().nextFloat() < MinotaurCtx.VERTICAL_CHANCE) {
+            return MinotaurState.ATTACK_VERTICAL;
         }
 
-        return wasHurt;
+        return MinotaurState.ATTACK_HORIZONTAL_1;
     }
 
-    // ------------------------------------------------------------------
-    // Animaciones (muerte: registerDeath dispara la animación al morir y
-    // retrasa la eliminación hasta que termina — ver MobAnimator)
-    // ------------------------------------------------------------------
+    // --- animations ---
 
     @Override
     public @NotNull MobAnimator<MinotaurEntity> animator() {
         return this.animator;
     }
 
+    /** Clip with no keyframes yet: full server behaviour, null supplier, flagged in the HUD. */
+    private StandardAnimation sinKeyframes(String name, Loop loop, int priority, float duration) {
+        this.debug.markMissing(name);
+        return new StandardAnimation(name, new AnimSource(() -> null), loop, 0, priority, duration);
+    }
+
     @Override
     public void registerAnimations() {
-        // TODO(Blockbench): faltan los keyframes de charge_loop y del resto de los bloques 2/3/4
-        //  (attack_horizontal_1 ya tiene su definición real).
-        //  Reemplazar cada `() -> null` por su definición real cuando estén. Con supplier
-        //  null el servidor funciona completo (FSM, HitWindows, sync) y el cliente
-        //  simplemente no dibuja esa animación — el resto sí se renderiza.
+        // TODO(Blockbench): everything going through sinKeyframes() still needs its export.
 
-        // --- Bloque 1: locomoción (loops, arrancan solos por play condition) ---
-        // La duración de un loop es la longitud real del clip: al agotarse reinicia el ciclo
-        // (restartCycle) y vuelve a evaluar la play condition, así que desalinearla contra el
-        // AnimationDefinition solo desincroniza ese chequeo del ciclo visual.
+        // --- locomotion loops ---
+        // A loop's duration must match the real clip length or the play-condition re-check
+        // desyncs from the visual cycle.
         StandardAnimation idle       = new StandardAnimation("idle",        new AnimSource(() -> MinotaurAnimation.IDLE), Loop.REPEATING, 0, 3, 2.0F);
         StandardAnimation walk       = new StandardAnimation("walk",        new AnimSource(() -> MinotaurAnimation.WALK), Loop.REPEATING, 0, 2, 2.0F);
         StandardAnimation run        = new StandardAnimation("run",         new AnimSource(() -> MinotaurAnimation.RUN), Loop.REPEATING, 0, 1, 0.75F);
         StandardAnimation combatIdle = new StandardAnimation("combat_idle", new AnimSource(() -> MinotaurAnimation.COMBAT_STANCE), Loop.REPEATING, 0, 1, 2.0F);
-        StandardAnimation chargeLoop = new StandardAnimation("charge_loop", new AnimSource(() -> null), Loop.REPEATING, 0, 1, 0.5F);
+        StandardAnimation chargeLoop = sinKeyframes("charge_loop", Loop.REPEATING, 1, 0.5F);
 
-        // --- Bloque 2: reacciones ---
-        StandardAnimation hurt  = new StandardAnimation("hurt",  new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 0.3F);
-        StandardAnimation death = new StandardAnimation("death", new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 2.0F);
+        // No hurt clip on purpose: a flinch would read as an interrupt the super armor never gives.
+        StandardAnimation death = sinKeyframes("death", Loop.PLAY_ONCE, 0, 2.0F);
 
-        // --- Bloques 3 y 4: one-shots disparados por los behaviors en onEnter ---
-        StandardAnimation spotted     = new StandardAnimation("target_spotted",      new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 1.0F);
-        StandardAnimation horizontal1 = new StandardAnimation("attack_horizontal_1", new AnimSource(() -> MinotaurAnimation.ATTACK_HORIZONTAL_1), Loop.PLAY_ONCE, 0, 0, 0.75F);
-        StandardAnimation horizontal2 = new StandardAnimation("attack_horizontal_2", new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 0.75F);
-        StandardAnimation vertical    = new StandardAnimation("attack_vertical",     new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 1.75F);
-        StandardAnimation push        = new StandardAnimation("attack_push",         new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 0.6F);
-        StandardAnimation chargeStart = new StandardAnimation("charge_start",        new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 0.75F);
-        StandardAnimation chargeHit   = new StandardAnimation("charge_hit",          new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 0.5F);
-        StandardAnimation chargeStun  = new StandardAnimation("charge_stun",         new AnimSource(() -> null), Loop.PLAY_ONCE, 0, 0, 2.0F);
+        // --- one-shots, played by the behaviors in onEnter ---
+        StandardAnimation spotted     = sinKeyframes("target_spotted",      Loop.PLAY_ONCE, 0, 1.0F);
+        StandardAnimation horizontal1 = new StandardAnimation("attack_horizontal_1", new AnimSource(() -> MinotaurAnimation.COMBO_A), Loop.PLAY_ONCE, 0, 0, MinotaurCtx.COMBO_CLIP_SECONDS);
+        StandardAnimation horizontal2 = new StandardAnimation("attack_horizontal_2", new AnimSource(() -> MinotaurAnimation.COMBO_B), Loop.PLAY_ONCE, 0, 0, MinotaurCtx.COMBO_CLIP_SECONDS);
+        StandardAnimation vertical    = sinKeyframes("attack_vertical",     Loop.PLAY_ONCE, 0, 1.75F);
+        StandardAnimation push        = sinKeyframes("attack_push",         Loop.PLAY_ONCE, 0, 0.6F);
+        StandardAnimation chargeStart = sinKeyframes("charge_start",        Loop.PLAY_ONCE, 0, 0.75F);
+        StandardAnimation chargeHit   = sinKeyframes("charge_hit",          Loop.PLAY_ONCE, 0, 0.5F);
+        StandardAnimation chargeStun  = sinKeyframes("charge_stun",         Loop.PLAY_ONCE, 0, 2.0F);
 
-        // Blends: locomoción responsiva; ataques comprometen rápido y asientan lento.
-        // Los loops cruzan 300 ms y no 150: IDLE no anima ni la raíz, ni `top`, ni las piernas,
-        // así que al pasar a walk/combat_stance esos huesos no interpolan "pose de idle → pose de
-        // walk" sino "pose de bind → mitad de zancada" (top gira 14°, leftLeg se traslada 5
-        // unidades). 3 ticks para eso se lee como un salto.
+        // Loops cross in 300 ms, not 150: IDLE animates neither the root, `top` nor the legs, so
+        // leaving it interpolates from the bind pose rather than from an idle pose.
         idle.blendInMs(300).blendOutMs(300);
         walk.blendInMs(300).blendOutMs(300);
         run.blendInMs(200).blendOutMs(250);
         combatIdle.blendInMs(300).blendOutMs(300);
-        horizontal1.blendInMs(200).blendOutMs(300).blockAdditive();
-        horizontal2.blendInMs(150).blendOutMs(300).blockAdditive();
+        // The combo crosses short: A and B share the same neutral start/end pose.
+        horizontal1.blendInMs(200).blendOutMs(250).blockAdditive();
+        horizontal2.blendInMs(80).blendOutMs(250).blockAdditive();
         vertical.blendInMs(200).blendOutMs(300).blockAdditive();
         push.blendInMs(120).blendOutMs(200).blockAdditive();
 
-        // --- Ventanas de daño atadas a los ticks de impacto de cada animación ---
-        // Valores de arranque: afinar rangos/arcos con /deluxelib debug hitboxes
+        // --- hit windows, bound to each animation's impact ticks ---
+        //
+        // Sweep angles are read off the keyframes (body + torso + top yaw) and NEGATED: in the
+        // bone a positive yaw turns right, while sweepAngle documents positive as left.
+        // Verify in-game with /deluxelib debug hitboxes before trusting the numbers.
 
-        // Combo A: barrido derecha → izquierda (impacto ticks 5-9, arco 120°)
-        // La hoja viaja del extremo de wind-up (tick 3.3) al final del golpe (tick 8.3), con el
-        // latigazo de `axe` en el 5.8; del 8.3 al 10.8 el brazo está congelado. La ventana cubre
-        // el tramo que se mueve, no la pose retenida.
-        HitWindow.of(5, 9)
-                .shape(AttackShape.sector(3.2F, 90.0F))
+        HitWindow.of(4, 8)
+                .shape(AttackShape.sector(3.2F, 50.0F))
                 .anchor(1.4F, 0.0F, 1.4F)
-                .sweepAngle(-60.0F, 60.0F)
+                .sweepAngle(50.0F, -65.0F)
                 .damage(9.0F)
-                .knockback(0.6F)
+                // Deliberately low: A's job is to leave the target where B can still reach.
+                .knockback(0.25F)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(horizontal1);
 
-        // Combo B: arco inverso izquierda → derecha (impacto ticks 5-8)
-        HitWindow.of(5, 8)
-                .shape(AttackShape.sector(3.2F, 90.0F))
+        // Combo B starts at tick 5, not 4: at 4 the arc is still behind the right shoulder.
+        HitWindow.of(5, 9)
+                .shape(AttackShape.sector(3.4F, 50.0F))
                 .anchor(1.4F, 0.0F, 1.4F)
-                .sweepAngle(60.0F, -60.0F)
-                .damage(9.0F)
-                .knockback(0.6F)
+                .sweepAngle(-60.0F, 30.0F)
+                .damage(11.0F)
+                .knockback(0.9F)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(horizontal2);
 
-        // Hachazo vertical: desciende de arriba al suelo (impacto ticks 17-20). Rompe escudos.
         HitWindow.of(17, 20)
-                .shape(AttackShape.sector(2.8F, 50.0F))
+                // Narrow arc, long reach (~6.3 blocks by the end of the sweep): with ~1s of
+                // telegraph, dodging it should cost a step SIDEWAYS, not one step back.
+                .shape(AttackShape.sector(3.2F, 40.0F))
                 .anchor(1.6F, 0.0F, 2.5F)
                 .sweepHeight(2.5F, 0.0F)
-                .damage(16.0F)
-                .knockback(0.3F)
+                .sweepForward(1.6F, 2.8F)
+                .damage(18.0F)
+                .knockback(0.4F)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .onHit((attacker, target) -> {
                     // 26.1: Player#disableShield is gone; break the raised shield via the item's
@@ -365,35 +368,43 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 })
                 .applyTo(vertical);
 
-        // Empuje con el mango: poco daño, mucho knockback (impacto ticks 4-7)
+        // Push: the damage is decorative, the knockback is the point. forward = 0 puts the cone's
+        // vertex at the feet — offset forward, a target hugging the mob falls behind it and the
+        // push reproduces the very dead zone it exists to cover.
         HitWindow.of(4, 7)
-                .shape(AttackShape.sector(2.0F, 70.0F))
-                .anchor(1.2F, 0.0F, 1.2F)
-                .damage(4.0F)
-                .knockback(1.4F)
+                .shape(AttackShape.sector(3.4F, 100.0F))
+                .anchor(0.0F, 0.0F, 1.2F)
+                .damage(5.0F)
+                .knockback(MinotaurCtx.PUSH_KNOCKBACK)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(push);
 
-        // --- Play conditions: los loops de locomoción siguen el estado del FSM ---
-        // syncedState(), NO serverState(): las play conditions se evalúan en ambos lados a
-        // propósito (así el loop arranca en el cliente sin esperar el round-trip del paquete de
-        // sync), y el precio de ese tradeoff es que solo pueden leer estado syncado — la misma
-        // razón por la que isMoving() se sincroniza acá y por la que OwlEntity sincroniza
-        // DATA_IS_SCREECHING/PERCH_TARGET_ID. El cortex es server-only, así que en el cliente
-        // serverState() devuelve siempre el estado por defecto (IDLE); syncedState() es el que
-        // CortexMonster expone justamente para esto.
+        // --- play conditions: the five loops PARTITION the FSM state ---
+        //
+        // Mutually exclusive and total, so exactly one loop is ever a candidate. `idle` used to
+        // have no condition and leaked into combat as the fallback.
+        //
+        // syncedState(), NOT serverState(): these run on both sides and the cortex is server-only.
+        idle.setPlayCondition(anim ->
+                syncedState() == MinotaurState.IDLE
+                        && !this.isMoving());
         walk.setPlayCondition(anim ->
                 syncedState() == MinotaurState.IDLE
                         && this.isMoving());
         run.setPlayCondition(anim ->
                 syncedState() == MinotaurState.CHASE
                         && this.isMoving());
-        combatIdle.setPlayCondition(anim -> syncedState() == MinotaurState.COMBAT_IDLE);
         chargeLoop.setPlayCondition(anim -> syncedState() == MinotaurState.CHARGE_RUN);
+        combatIdle.setPlayCondition(anim -> {
+            final MinotaurState state = syncedState();
+            return state != MinotaurState.IDLE
+                    && state != MinotaurState.CHARGE_RUN
+                    && !(state == MinotaurState.CHASE && this.isMoving());
+        });
 
         this.animator
                 .register(idle).register(walk).register(run).register(combatIdle).register(chargeLoop)
-                .register(hurt).registerDeath(death)
+                .registerDeath(death)
                 .register(spotted).register(horizontal1).register(horizontal2)
                 .register(vertical).register(push)
                 .register(chargeStart).register(chargeHit).register(chargeStun);

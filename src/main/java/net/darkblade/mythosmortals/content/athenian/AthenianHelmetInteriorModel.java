@@ -11,12 +11,7 @@ import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.resources.Identifier;
 
-/**
- * "Filled" geometry for the Athenian helmet, used only in first-person hand view (see
- * {@link HelmetInteriorRenderer}) — the normal Blockbench item model is a thin hollow shell that
- * looks empty from up close, so first-person swaps in this solid Java model instead. Ported directly
- * from a Blockbench Java export (same {@code CubeListBuilder} idioms as {@link DoriSpearProjectileModel}).
- */
+
 public final class AthenianHelmetInteriorModel {
     public static final ModelLayerLocation LAYER_LOCATION =
         new ModelLayerLocation(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "athenian_helmet_interior"), "main");

@@ -7,11 +7,7 @@ import net.darkblade.mythosmortals.content.minotaur.MinotaurEntity;
 import net.darkblade.mythosmortals.content.minotaur.MinotaurState;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Embestida D) Choque contra pared: rebota hacia atrás y queda mareado.
- * Es la ventana de castigo del jefe — 40 ticks vulnerable sin hacer nada
- * (no interrumpible: el mareo entero es la recompensa por hacerlo fallar).
- */
+
 public class ChargeStunBehavior extends TimedAnimationBehavior<MinotaurEntity, MinotaurState> {
 
     public ChargeStunBehavior() {
@@ -22,7 +18,6 @@ public class ChargeStunBehavior extends TimedAnimationBehavior<MinotaurEntity, M
     public void onEnter(MinotaurEntity entity, BehaviorContext context) {
         super.onEnter(entity, context);
 
-        // Rebote físico contra la pared
         final Vec3 direction = context.get(MinotaurCtx.CHARGE_DIRECTION);
         entity.setDeltaMovement(direction.scale(-0.5).add(0.0, 0.3, 0.0));
     }
