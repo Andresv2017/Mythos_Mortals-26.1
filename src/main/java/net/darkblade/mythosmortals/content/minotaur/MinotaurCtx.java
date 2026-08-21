@@ -3,7 +3,6 @@ package net.darkblade.mythosmortals.content.minotaur;
 import net.darkblade.deluxelib.entity.ai.cortex.behavior.BehaviorData;
 import net.minecraft.world.phys.Vec3;
 
-/** Behavior context keys and tuning constants for the minotaur. */
 public final class MinotaurCtx {
 
     private MinotaurCtx() {

@@ -14,14 +14,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Client → server: the piloting player right-clicked an entity (Athena's Sight marking). The server
- * applies the vanilla Glowing effect to that target, giving it a see-through-walls outline visible
- * to the player and their allies. Accepted only from the actual controller.
- */
+
 @PacketSide(side = Side.SERVER)
 public final class OwlMarkServerPacket extends AbstractNetworkPacket<OwlMarkServerPacket> {
-    /** How long a mark's glow lasts (ticks). Right-clicking again refreshes it. */
+
     private static final int GLOW_DURATION_TICKS = 300;   // 15 s
 
     private int owlId;
@@ -51,7 +47,6 @@ public final class OwlMarkServerPacket extends AbstractNetworkPacket<OwlMarkServ
                 && targetEntity instanceof LivingEntity target
                 && target.isAlive()
                 && target != owl) {
-            // ambient=false, visible=false (no swirl particles), showIcon=false — just the outline.
             target.addEffect(new MobEffectInstance(MobEffects.GLOWING, GLOW_DURATION_TICKS, 0, false, false, false));
         }
     }

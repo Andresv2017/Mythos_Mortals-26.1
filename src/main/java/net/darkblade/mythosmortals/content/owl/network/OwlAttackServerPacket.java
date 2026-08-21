@@ -10,12 +10,6 @@ import net.darkblade.mythosmortals.content.owl.OwlEntity;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Client → server: the piloting player left-clicked. The server fires the owl's own custom strike
- * (the {@code dive_attack} animation + its HitWindow) — see {@link OwlEntity#performControlledAttack}.
- * No target id: the HitWindow's own shape decides who gets hit, so the player just flies the owl onto
- * the enemy and clicks. Accepted only from the actual controller.
- */
 @PacketSide(side = Side.SERVER)
 public final class OwlAttackServerPacket extends AbstractNetworkPacket<OwlAttackServerPacket> {
     private int owlId;

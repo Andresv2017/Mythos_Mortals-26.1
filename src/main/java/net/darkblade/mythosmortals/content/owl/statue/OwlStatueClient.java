@@ -11,14 +11,7 @@ import org.joml.Vector3f;
 
 import java.util.Map;
 
-/**
- * El {@link StatueConfig} de la Estatua del Búho — contenido demo, no librería. Vive en {@code test/}
- * y client-only: {@code StatueConfig} referencia clases de cliente, así que nada del servidor puede
- * alcanzar esta clase. La cargan solo los handlers {@code Dist.CLIENT} de {@link MythosMortalsRegistry}.
- *
- * <p>Los números de pose ({@code x, y, z, scale}) son la línea base compilada: lo que una sesión de
- * {@code StatueTuner} imprime y se pega sobre la llamada al constructor de abajo.
- */
+
 public final class OwlStatueClient {
     private static final float TEXELS_PER_BLOCK = 16.0F;
 
@@ -34,9 +27,6 @@ public final class OwlStatueClient {
                     ItemDisplayContext.FIRST_PERSON_RIGHT_HAND, tf(-200, -315, 0, 4.0F, 7.0F, -0.5F, 0.40F),
                     ItemDisplayContext.FIRST_PERSON_LEFT_HAND, tf(-200, 390, 0, -2.0F, 5.5F, -5.0F, 0.40F),
                     ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, tf(240, 185, 0, -5.5F, 2.5F, 6.5F, 0.63F),
-                    // Espejado del de tercera persona derecha (no tuneado aparte): la reflexión sobre
-                    // el plano X=0 de la muñeca niega la traslación X y las rotaciones en Y/Z, y
-                    // conserva la rotación en X y las traslaciones Y/Z. La escala es simétrica.
                     ItemDisplayContext.THIRD_PERSON_LEFT_HAND, tf(240, -185, 0, 5.5F, 2.5F, 6.5F, 0.63F)));
 
     private static ItemTransform tf(float rx, float ry, float rz, float tx, float ty, float tz, float scale) {

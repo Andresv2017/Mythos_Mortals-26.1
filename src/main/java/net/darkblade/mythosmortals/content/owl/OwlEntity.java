@@ -67,67 +67,27 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * The Copper Owl companion ("Búho de Atenea"), on its own {@link EntityType}, rendered with its own
- * {@link CopperOwlModel}/{@link OwlAnimation} keyframes via {@link OwlRenderer}. No death animation is
- * registered (see {@link #registerAnimations}) — {@link ArpyAnimation}'s death clips reference bones
- * that don't exist on this model and crashed the client on death.
- *
- * <p>Statue block → companion entity: the decorative Owl Statue block (a separate {@code Block} +
- * {@code BlockEntity}, not this class) is where the dormant/inert state lives. Right-clicking that
- * block while holding the Minotaur's Greek Bronze Core removes it and spawns this entity in its
- * place, immediately calling {@link #bondTo} with the interacting player — that bond is what
- * {@link FollowOwnerGoal} and {@link #checkPossessionGate} key off of from then on. This entity
- * itself is always fully alive/flying from the moment it exists; it has no dormant state of its own.
- *
- * <p>Unlike {@link ArpyEntity} (a hostile monster this was prototyped on), this registers no
- * combat/targeting goals: it's a permanent flying companion (see {@link FollowOwnerGoal} — never
- * lands, follows/hovers/orbits its owner) that the owner can possess via {@link #tryStartPossession}.
- */
 public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEntity>, Possessable, Perchable {
 
     private static final EntityDataAccessor<Boolean> DATA_IS_DIVING =
             SynchedEntityData.defineId(OwlEntity.class, EntityDataSerializers.BOOLEAN);
-    /**
-     * Entity id of the player currently piloting this owl via Athena's Sight, or {@code -1} when
-     * free. Synced so every client can tell whether the owl is under a player's control — the
-     * controlling client compares it against its own {@code localPlayer.getId()} to switch its
-     * camera to the owl.
-     */
+
     private static final EntityDataAccessor<Integer> CONTROLLER_ID =
             SynchedEntityData.defineId(OwlEntity.class, EntityDataSerializers.INT);
-    /**
-     * Entity id of the player this owl is currently perched on, or {@code -1} when flying free.
-     * Synced: the client needs it both for the idle/cruise play conditions (which stand down while
-     * perched — see registerAnimations()) and to know which player to draw the owl on (PerchClient).
-     */
+
     private static final EntityDataAccessor<Integer> PERCH_TARGET_ID =
             SynchedEntityData.defineId(OwlEntity.class, EntityDataSerializers.INT);
-    /**
-     * True while the sonic screech is running. Synced for the same reason {@link #DATA_IS_DIVING} is:
-     * the idle/cruise clips are excluded by play condition, and those conditions are evaluated on both
-     * sides (see {@link #registerAnimations}).
-     */
+
     private static final EntityDataAccessor<Boolean> DATA_IS_SCREECHING =
             SynchedEntityData.defineId(OwlEntity.class, EntityDataSerializers.BOOLEAN);
 
     private final MobAnimator<OwlEntity> animator = new MobAnimator<>(this);
 
-    // -----------------------------------------------------------------------
-    // Perching on the owner's arm
-    // -----------------------------------------------------------------------
-    // Where the owl sits relative to its host lives in OwlPerchPlacement, read from here to place the
-    // HITBOX and from the library's render path to draw the bird. One set of numbers for both: they
-    // used to be two hand-synced copies, and tuning one without the other silently put the hitbox
-    // somewhere the owl wasn't drawn.
 
     // -----------------------------------------------------------------------
     // Possession (Athena's Sight) — server-side authority
     // -----------------------------------------------------------------------
     private static final int POSSESSION_DURATION_TICKS = 600;   // 30 s
-    /** Cooldown before the owl can be possessed again after a session ends. Deliberately short right
-     * now (10 s) so the mechanic stays fast to iterate on — raise to 4800 (4 min, the designed value)
-     * once the rest of the feature (upgrade gate, safety radius) is in. */
     private static final int POST_POSSESSION_COOLDOWN_TICKS = 200;
     private static final double POSSESSED_SPEED = 0.5;          // target flight speed (blocks/tick)
     private static final double POSSESSED_ACCEL = 0.2;          // velocity blend per tick
@@ -140,108 +100,50 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     private static final double POSSESSED_RETURN_ACCEL = 0.35;
     private static final double POSSESSED_MAX_RADIUS = 56.0;    // horizontal leash from the body
     private static final double POSSESSED_MAX_CLIMB = 40.0;     // ceiling above the anchor
+
     // -----------------------------------------------------------------------
     // Defending its owner (see DefendOwnerGoal and the two targeting goals)
     // -----------------------------------------------------------------------
-    /** How far from the OWNER a threat can be and still be picked up. Measured to the owner, not to
-     * the owl: what makes something a target is that it is near the person being defended. */
     private static final double DEFEND_ACQUIRE_RANGE = 16.0;
-    /** How far a target may get FROM THE OWNER before the owl drops it and comes home. Chasing a
-     * fleeing mob to the horizon leaves the owner undefended, which is the opposite of the job. */
     private static final double DEFEND_LEASH_RADIUS = 24.0;
-    /**
-     * The same leash for a target the owner picked out deliberately with the spyglass. Much longer,
-     * because pointing at something far away IS the point of ordering — with the defensive leash the
-     * owl would drop the order the instant it was given.
-     *
-     * <p>Must stay comfortably above {@code OwlOrderInput.ORDER_REACH} (96) or the furthest orders
-     * would be dropped on arrival. Not raised beyond this either: past roughly 160 blocks the owl
-     * leaves the server's simulation distance and its chunk stops ticking, which would strand it
-     * mid-flight rather than send it further.
-     */
     private static final double ORDER_LEASH_RADIUS = 112.0;
-
-    /** True while the current target was designated by the owner rather than acquired automatically.
-     * Only widens the leash; cleared when {@code DefendOwnerGoal} lets the target go. */
     private boolean targetWasOrdered;
 
-    /** "No hostiles within N blocks of the player" activation safety gate. */
     private static final double SAFETY_RADIUS = 10.0;
 
     // -----------------------------------------------------------------------
     // Sonic screech — the ranged attack, mouse wheel while possessed
     // -----------------------------------------------------------------------
-    /** Ticks the screech occupies end to end. Must stay in step with the registered animation's
-     * length (26 ticks = 1.3 s): this counter is what holds {@link #isScreeching()} up, and both the
-     * clip and the idle/cruise suppression are sized off it. */
     private static final int SONIC_TOTAL_TICKS = 26;
-    /** Tick within the screech at which the ray actually fires. Everything before it is windup — the
-     * charge cue plus the owl braking to a hover — so the hit is telegraphed rather than instant. */
     private static final int SONIC_RELEASE_TICK = 14;
     private static final int SONIC_COOLDOWN_TICKS = 80;      // 4 s between screeches
-    /** Beam length in blocks, before {@link HitWindow#clipToBlocks()} cuts it at terrain. */
     private static final float SONIC_RANGE = 18.0F;
-    /** How forgiving the ray is sideways — aiming a beam at a moving mob from 15 blocks up needs some. */
     private static final float SONIC_RADIUS = 1.1F;
     private static final float SONIC_DAMAGE = 7.0F;
     private static final float SONIC_POISE_DAMAGE = 12.0F;
-    /** Push along the beam's own axis (not radially away from the owl) — see the {@code onHit} in
-     * {@link #registerAnimations}. */
     private static final double SONIC_KNOCKBACK_H = 1.6;
     private static final double SONIC_KNOCKBACK_V = 0.4;
-    /** Where the ray is born: this far forward of the eyes along the aim, i.e. at the beak. */
     private static final float SONIC_ORIGIN_FORWARD = 0.45F;
-    /** Blocks between SONIC_BOOM sprites. They are large, so one per block already reads as a solid
-     * ray — denser just makes an opaque wall. */
     private static final double SONIC_PARTICLE_SPACING = 1.0;
-    /** Samples skipped at the origin, so the first (huge) sprite isn't drawn inside the owl's own head. */
     private static final int SONIC_PARTICLE_SKIP = 1;
-    /** Velocity blend toward a standstill while screeching: a ray fired from a bird travelling at
-     * {@link #POSSESSED_DIVE_SPEED} smears across the sky instead of reading as aimed. */
     private static final double SONIC_BRAKE_ACCEL = 0.35;
 
-    /** Whether the Athena's Sight upgrade has been applied to this owl (see {@link #mobInteract}).
-     * Persisted, not synced — it's a server-only gate, the client never needs to know. */
+
     private boolean hasAthenaSightUpgrade;
-    /** Whether the sonic-screech upgrade has been applied (see {@link #mobInteract}). Gates the
-     * screech both while piloted and in the owl's own defence. Server-only, like the one above: it is
-     * a permission check, never something the client needs to render. */
     private boolean hasSonicUpgrade;
-    /** How many copper-ingot health upgrades have been fed to this owl (see {@link #mobInteract}),
-     * capped at {@link #MAX_COPPER_UPGRADES}. Persisted so {@link #readAdditionalSaveData} knows how
-     * many {@link #copperHealthModifierId} modifiers to re-apply after a reload. */
     private int copperUpgrades;
-    /** Guards the one-time {@code startAirborne()} call on a fresh spawn (see {@link #tick()}). Not
-     * persisted: reloading from a save re-enters through {@code readAdditionalSaveData}'s own
-     * {@code startAirborne()} call (the "DlxFlying" flag is always true for this entity), so calling
-     * it again here too on the very next tick is harmless — just redundant. */
     private boolean airborneInitialized;
-    /** True from {@link #bondTo} until the one-shot "awake" transition ({@link OwlAnimation#AWAKE})
-     * finishes: the owl spawns grounded right where the statue stood and stays there playing that
-     * animation, gating {@link #airborneInitialized} in {@link #tick()} until it completes. Only set
-     * for a statue-spawned owl — a plain {@code /summon} (never bonded) skips straight to airborne,
-     * same as before. Not persisted: a reload resumes flying immediately via
-     * {@code readAdditionalSaveData}, same as {@link #airborneInitialized}. */
     private boolean pendingAwaken;
-    /** Guards the one-time {@link MobAnimator#play} trigger for "awake" in {@link #tick()}, so a tick
-     * where the clip has already finished isn't mistaken for "never started" and replayed forever. */
     private boolean awakeStarted;
-    /** The player this owl is bonded to, set once by {@link #bondTo} — called by the Owl Statue
-     * block right when it spawns this entity (statue block → companion entity). Persisted. */
     private @Nullable UUID ownerUUID;
 
     private @Nullable ServerPlayer controller;
     private int possessionTicksRemaining;
     private int possessionCooldownTicks;
     private @Nullable Vec3 possessionAnchor;
-    /** Latest movement intent from the controlling client (only {@code forward} is read — see
-     * {@link PossessionGoal}). Fed by {@code PossessedInputServerPacket}; the body's own input is frozen
-     * client-side so we can't read it off the player. Reset to {@link Input#EMPTY} at the start/end
-     * of each possession. */
     private Input controlInput = Input.EMPTY;
-    /** Latest look rotation from the controlling client, sent in the same packet as the input. Used
-     * as the flight direction — reading it off the server player is unreliable while the camera is
-     * on the owl, so the client tells us directly. */
+    /** Look rotation sent by the controlling client. The server player's own rotation is unreliable
+     * while the camera is on the owl, so the client reports it directly. */
     private float controlYaw;
     private float controlPitch;
     /** Ticks left in the active dive-strike (the auto-dive window); also gates re-triggering. */
@@ -252,20 +154,14 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     private int controlSonicTicks;
     /** Ticks until the screech is available again, counted from the moment it starts. */
     private int controlSonicCooldown;
-    /** Mobs the owl has directly hit (see {@link #recordGrudge}) — checked by IDENTITY, not
-     * distance, in {@link #clearAggro}, so a hit mob gets its target cleared no matter how far it
-     * wandered or how long it takes to catch up. Value = the tick it was recorded, so an entry that
-     * never resolves ages out via {@link #GRUDGE_MAX_AGE_TICKS} instead of leaking forever. */
+    /** Mobs the owl hit while piloted, matched by identity in {@link #clearAggro} so distance and
+     * travel time don't matter. Value = the tick recorded, so entries that never resolve age out
+     * via {@link #GRUDGE_MAX_AGE_TICKS}. */
     private final Map<Mob, Integer> grudgeMobs = new HashMap<>();
-    /** Last {@code getTarget()} observed on each {@link #grudgeMobs} entry, purely for the debug
-     * watcher in {@link #tick()} to log the EXACT tick a change happens — not used by any actual
-     * clearing logic. */
+    /** Debug only: last target seen on each {@link #grudgeMobs} entry. */
     private final Map<Mob, LivingEntity> grudgeDebugLastTarget = new HashMap<>();
 
-    /** Console diagnostic for the aggro-clearing investigation: logs every target change on a
-     * tracked mob (tick-precise) and the before/after state of every {@link #clearAggro} pass, so
-     * the actual behavior is OBSERVED instead of guessed at. Flip off once the mechanism driving the
-     * re-targeting is understood/confirmed fixed. */
+    /** Logs every target change on a tracked mob and each {@link #clearAggro} pass. */
     private static final boolean DEBUG_AGGRO = false;
     private static final Logger AGGRO_LOG = LoggerFactory.getLogger("DlxOwlAggro");
 
@@ -286,24 +182,21 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     // -----------------------------------------------------------------------
-    // Copper ingot health upgrade — owner feeds copper ingots to raise max health permanently
+    // Copper ingot upgrade — owner feeds copper ingots to raise max health permanently
     // -----------------------------------------------------------------------
     /** Max health granted per copper ingot fed. */
     private static final double COPPER_HEALTH_PER_INGOT = 4.0;
-    /** How many ingots the owl accepts before it's maxed out (10 base + 5*4 = 36 HP / 18 hearts). */
+    /** Ingots accepted before the owl is maxed out (16 base + 5*4 = 36 HP / 18 hearts). */
     private static final int MAX_COPPER_UPGRADES = 5;
-    /** One stable {@link AttributeModifier} id per upgrade level, so re-applying on load (see
-     * {@link #readAdditionalSaveData}) can safely check {@link AttributeInstance#hasModifier} instead
-     * of guessing whether vanilla's own attribute NBT round-trip already restored it — same idiom
-     * {@code Mob#finalizeSpawn} uses for its own permanent FOLLOW_RANGE bonus. */
+    /** Stable modifier id per upgrade level, so re-applying on load can check
+     * {@link AttributeInstance#hasModifier} instead of guessing what vanilla's own attribute NBT
+     * round-trip already restored. */
     private static @NotNull Identifier copperHealthModifierId(int level) {
         return Identifier.fromNamespaceAndPath(MythosMortals.MODID, "owl_copper_health_" + level);
     }
 
     // -----------------------------------------------------------------------
-    // Bronze ingot heal — owner feeds bronze ingots to top up CURRENT health, uncapped uses, no
-    // max-health change (that's what the copper ingot above is for). Blocked once the owl is already
-    // at full health so it can't be right-clicked for nothing.
+    // Bronze ingot heal — tops up current health only, unlimited uses, refused at full health
     // -----------------------------------------------------------------------
     private static final double BRONZE_HEAL_AMOUNT = 6.0;
     private static final int BRONZE_HEAL_PARTICLES = 8;
@@ -369,11 +262,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         this.applyCopperHealthModifiers();
     }
 
-    /** (Re-)applies every {@link #copperHealthModifierId} up to {@link #copperUpgrades}, guarded by
-     * {@link AttributeInstance#hasModifier} so this is safe to call after a reload even if vanilla's
-     * own attribute NBT round-trip already restored the same modifiers — same idiom
-     * {@code Mob#finalizeSpawn} uses for its permanent FOLLOW_RANGE bonus. Does NOT heal — reloading
-     * shouldn't top off missing health, only guarantee the max-health bonus itself survived. */
+    /** Re-applies the copper max-health modifiers after a load, skipping any vanilla already
+     * restored. Does not heal: a reload should restore the bonus, not top up missing health. */
     private void applyCopperHealthModifiers() {
         AttributeInstance maxHealth = this.getAttribute(Attributes.MAX_HEALTH);
         if (maxHealth == null) {
@@ -391,11 +281,9 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     public void tick() {
         super.tick();
         if (!this.level().isClientSide()) {
-            // This owl never lands: it's a permanent flying companion, no takeoff/landing/ground
-            // state at all. Force airborne once on a fresh spawn (a reload already restores it via
-            // readAdditionalSaveData) instead of waiting on groundRestTimer/TakeoffGoal — neither of
-            // which are registered anymore. A statue-spawned owl (pendingAwaken) instead stays
-            // grounded through the one-shot "awake" transition first — see bondTo().
+            // This owl never lands, so no takeoff/landing goals are registered: force it airborne
+            // once on spawn. A statue-spawned owl (pendingAwaken) first plays the grounded "awake"
+            // transition — see bondTo().
             if (!this.airborneInitialized) {
                 if (this.pendingAwaken) {
                     emitAwakeningParticles();
@@ -416,25 +304,20 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                     this.startAirborne();
                 }
             }
-            // Runs every tick regardless of goals — the re-possession cooldown must count down even
-            // while PossessionGoal (which only ticks while active) isn't selected.
+            // Ticked here, not in PossessionGoal: the cooldown must run while nobody is piloting.
             if (this.possessionCooldownTicks > 0) {
                 this.possessionCooldownTicks--;
             }
-            // Screech bookkeeping lives here rather than in PossessionGoal, because the defence AI
-            // fires the same screech with nobody piloting — and PossessionGoal.tick() only runs while
-            // a pilot is in control. Left there, an AI screech would leave isScreeching() stuck true
-            // forever, freezing the pose and permanently blocking the next one.
+            // Same for the screech: the defence AI fires it with nobody piloting, so ticking it in
+            // PossessionGoal would leave isScreeching() stuck true forever.
             if (this.controlSonicCooldown > 0) {
                 this.controlSonicCooldown--;
             }
             if (this.controlSonicTicks > 0 && --this.controlSonicTicks == 0) {
                 this.setScreeching(false);   // lets idle_fly/fly_sprint take the pose back
             }
-            // Cleaning up after a possession session only — NOT whenever the owl happens to be
-            // un-piloted. See aggroClearTicks for why that distinction became load-bearing once the
-            // owl started fighting on its own. Also paused while it HAS a target: mid-fight is
-            // exactly when its opponents are supposed to be fighting back.
+            // Only after a possession session, and paused while the owl has a target of its own —
+            // mid-fight is exactly when its opponents are supposed to fight back.
             if (this.aggroClearTicks > 0) {
                 this.aggroClearTicks--;
                 if (getTarget() == null && this.tickCount % AGGRO_CHECK_INTERVAL_TICKS == 0) {
@@ -447,11 +330,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
-    /** Debug-only: runs every tick (while {@link #grudgeMobs} is non-empty) and logs the EXACT tick a
-     * tracked mob's {@code getTarget()} changes to/from the owl, plus its {@code getLastHurtByMob()}
-     * at that instant — so if something between our once-a-second {@link #clearAggro} passes keeps
-     * re-pointing it at the owl, this shows precisely how many ticks after the clear it happens
-     * (immediately, next tick, N ticks later) instead of us having to infer it. */
+    /** Debug only: logs the exact tick a tracked mob's target changes, to see what re-points it at
+     * the owl between {@link #clearAggro} passes. */
     private void debugWatchGrudgeTargets() {
         if (this.grudgeMobs.isEmpty()) {
             return;
@@ -498,11 +378,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         this.controlPitch = pitch;
     }
 
-    /** Server-side: fire the owl's own custom strike on the controller's left-click — the
-     * {@code dive_attack} animation (borrowed from the arpy for now) and its
-     * {@link net.darkblade.deluxelib.combat.HitWindow}, which carries the real combat (damage /
-     * knockback / poise / debug particles, hit-once per swing). The active window doubles as the
-     * re-trigger cooldown (see {@code PossessionGoal.tick}). */
+    /** Server-side: the left-click dive strike. The {@code dive_attack} animation's
+     * {@link HitWindow} carries the damage; its active window doubles as the re-trigger cooldown. */
     public void performControlledAttack() {
         if (this.controlAttackCooldown > 0 || this.controlReturnTicks > 0 || this.controlSonicTicks > 0) {
             return;   // already diving, pulling up, or mid-screech
@@ -512,21 +389,16 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Server-side: fire the sonic screech on the controller's mouse-wheel click
-     * ({@code OwlSonicAttackServerPacket}) — the ranged counterpart to the left-click dive. The
-     * {@code sonic_screech} animation carries the real combat through its
-     * {@link net.darkblade.deluxelib.combat.HitWindow}: a 3D {@link AttackShape.Beam} along the
-     * pilot's aim, cut short by terrain, firing on one exact tick (see {@link #registerAnimations}).
+     * Server-side: the sonic screech, ranged counterpart to the dive. The {@code sonic_screech}
+     * animation's {@link HitWindow} fires an {@link AttackShape.Beam} along the aim on one exact
+     * tick (see {@link #registerAnimations}).
      *
-     * <p>Started imperatively rather than by play condition because the clip is {@link Loop#PLAY_ONCE}
-     * and {@link MobAnimator} only auto-starts REPEATING animations — same as {@code awake} and
-     * {@code dive_attack_return}. {@link #controlSonicTicks} is what keeps the state (and the idle
-     * suppression) up for the clip's whole length; the cooldown starts now, not when it ends, so the
+     * <p>Started imperatively because the clip is {@link Loop#PLAY_ONCE} and {@link MobAnimator}
+     * only auto-starts REPEATING ones. The cooldown starts now, not when the clip ends, so the
      * usable rate is exactly {@link #SONIC_COOLDOWN_TICKS}.
      */
     public void performSonicAttack() {
-        // No isPossessed() check: the defence AI fires this too (see DefendOwnerGoal). The upgrade is
-        // what gates it in both cases, and the cooldown/other-move guards are shared.
+        // No isPossessed() check: the defence AI fires this too (see DefendOwnerGoal).
         if (!this.hasSonicUpgrade
                 || this.controlSonicTicks > 0 || this.controlSonicCooldown > 0
                 || this.controlAttackCooldown > 0 || this.controlReturnTicks > 0) {
@@ -539,19 +411,15 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Right-click does one of three things, by held item:
+     * Right-click, by held item — owner-gated in every case:
      * <ul>
-     *   <li><b>Empty hand</b> (owner only): toggles perching — the owl teleports onto the owner's
-     *       raised right arm and holds the {@code perch} pose, or takes off again if already perched.</li>
-     *   <li><b>Spyglass</b>, not yet upgraded: applies the Athena's Sight upgrade.</li>
-     *   <li><b>Copper ingot</b> (owner only), below {@link #MAX_COPPER_UPGRADES}: feeds it, raising
-     *       max health by {@link #COPPER_HEALTH_PER_INGOT} and healing by the same amount.</li>
-     *   <li><b>Bronze ingot</b> (owner only), while not at full health: heals
-     *       {@link #BRONZE_HEAL_AMOUNT} current health (no max-health change) and puffs a few copper
-     *       particles. Refused outright once the owl is topped up.</li>
+     *   <li><b>Empty hand</b>: toggles perching on the owner's raised right arm.</li>
+     *   <li><b>Copper ingot</b>, below {@link #MAX_COPPER_UPGRADES}: raises max health by
+     *       {@link #COPPER_HEALTH_PER_INGOT} and heals the same amount.</li>
+     *   <li><b>Bronze ingot</b>, while not at full health: heals {@link #BRONZE_HEAL_AMOUNT}.</li>
+     *   <li><b>Athena Ocular / Sonic Screech upgrade</b>: unlocks that ability, once each.</li>
      * </ul>
-     * Activating the ability itself is the keybind (see {@link #tryStartPossession}), never this — a
-     * bonded owl flies beside you, it isn't something you walk up and click.
+     * Athena's Sight is activated by keybind, never here — see {@link #tryStartPossession}.
      */
     @Override
     protected @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
@@ -562,8 +430,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 if (this.level().isClientSide()) {
                     return InteractionResult.SUCCESS;   // predicts the arm-swing for the perch toggle
                 }
-                // Only the bonded owner can call it to their arm; anyone else's empty-hand click is
-                // left to the default (nothing).
+                // Only the bonded owner can call it to their arm.
                 if (player.getUUID().equals(this.ownerUUID) && !this.isPossessed()) {
                     if (this.isPerched()) {
                         this.stopPerching();
@@ -575,8 +442,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 return super.mobInteract(player, hand);
             }
 
-            // Owner-gated (like the perch toggle) — a companion's own stats shouldn't be tunable by
-            // just anyone who walks up to it.
+            // Owner-gated: a companion's stats shouldn't be tunable by a passer-by.
             if (held.is(Items.COPPER_INGOT) && player.getUUID().equals(this.ownerUUID)
                     && this.copperUpgrades < MAX_COPPER_UPGRADES) {
                 if (this.level().isClientSide()) {
@@ -597,9 +463,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 return InteractionResult.SUCCESS;
             }
 
-            // Bronze ingot: pure heal, no max-health change, no upgrade count — just tops up current
-            // health for as many ingots as it takes. Gated on not being full so it can't be clicked
-            // for nothing once the owl's topped up.
+            // Bronze ingot: pure heal, no upgrade count. Gated on not already being at full health.
             if (held.is(MythosMortalsItems.BRONZE_INGOT.get()) && player.getUUID().equals(this.ownerUUID)
                     && this.getHealth() < this.getMaxHealth()) {
                 if (this.level().isClientSide()) {
@@ -618,13 +482,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 return InteractionResult.SUCCESS;
             }
 
-            // The two progression upgrades. Owner-gated for the same reason feeding is: what a
-            // companion can do shouldn't be decidable by a passer-by.
-            //
-            // The spyglass is NOT the upgrade item any more — it became the tool you point at a
-            // target to send the owl (see OwlOrderInput), and an item cannot sensibly be both the
-            // permanent unlock and the everyday tool. It survives as an ingredient of the Athena
-            // Ocular's recipe instead.
+            // The two progression upgrades. The spyglass is not an upgrade item — it aims orders at
+            // a target (see OwlOrderInput) and is only a crafting ingredient for the Athena Ocular.
             if (player.getUUID().equals(this.ownerUUID)) {
                 if (held.is(MythosMortalsItems.ATHENA_OCULAR_UPGRADE.get()) && !this.hasAthenaSightUpgrade) {
                     if (this.level().isClientSide()) {
@@ -657,23 +516,18 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         this.setDiving(false);
         this.getNavigation().stop();
         this.setDeltaMovement(Vec3.ZERO);
-        // A perched owl deliberately shares space with its host, so vanilla's entity separation has to
-        // be switched off: Entity#push shoves BOTH participants apart, and it is only skipped when one
-        // of them has noPhysics. Without this, merely turning the camera sweeps the owl's hitbox
-        // around the host and drags them sideways.
+        // A perched owl shares space with its host, so entity separation must be off: Entity#push
+        // shoves both participants apart unless one has noPhysics, which would drag the host
+        // sideways whenever they turn the camera.
         this.noPhysics = true;
         Vec3 spot = perchPosition(player);
         this.teleportTo(spot.x, spot.y, spot.z);
-        // Claim the hotbar slot the owner had selected: perching requires an empty hand, and from
-        // here on the game treats that slot as holding something (see PerchManager).
+        // Claim the selected hotbar slot so the hand stays occupied (see PerchManager).
         PerchManager.begin(player, this, player.getInventory().getSelectedSlot());
     }
 
-    /** Entry point for the "right click anywhere to dismount" input handler
-     * ({@code DismountPerchServerPacket}): releases the owl from the arm without needing to aim at
-     * its (hitbox-lags-the-arm-render) perched position, the same way {@link #tryStartPossession}
-     * doesn't need a click on the owl either. Re-checks ownership and perch state server-side rather
-     * than trusting the client. */
+    /** Entry point for {@code DismountPerchServerPacket} ("right-click anywhere to dismount"): no
+     * need to aim at the owl, whose hitbox lags the rendered arm. Re-validates server-side. */
     @Override
     public void tryStopPerching(ServerPlayer player) {
         if (this.isPerched() && !this.isPossessed() && player.getUUID().equals(this.ownerUUID)) {
@@ -681,9 +535,9 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
-    /** Clears this owl's claim on its host's hotbar slot, if it has one. Safe to call when it isn't
-     * perched, and safe to call twice — which is why every path that can end a perch calls it,
-     * including the ones that never go through {@link #stopPerching()} (death, removal). */
+    /** Releases the host's hotbar slot. Safe to call unperched and safe to call twice, so every
+     * path that ends a perch calls it — including death and removal, which skip
+     * {@link #stopPerching()}. */
     private void releasePerchedHand() {
         if (!this.level().isClientSide()
                 && this.level().getEntity(this.getPerchTargetId()) instanceof Player host) {
@@ -693,8 +547,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
 
     /** Server-side: leave the arm and go back to free companion flight. */
     private void stopPerching() {
-        // Release the hand BEFORE clearing the target id — that id is the only way back to the host,
-        // and a leaked entry leaves them with a hotbar slot the game quietly refuses to fill.
+        // Release the hand first: the target id is the only way back to the host.
         releasePerchedHand();
         this.entityData.set(PERCH_TARGET_ID, -1);
         this.noPhysics = false;
@@ -702,8 +555,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         this.setDeltaMovement(0.0, 0.25, 0.0);
     }
 
-    /** Belt-and-braces with the {@code noPhysics} flag set in {@link #startPerching}: also stop the
-     * owl from initiating pushes of its own while it is riding on someone. */
+    /** Complements the {@code noPhysics} flag in {@link #startPerching}: a perched owl also never
+     * initiates pushes of its own. */
     @Override
     protected void pushEntities() {
         if (!this.isPerched()) {
@@ -711,14 +564,11 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
-    /** World position of {@code player}'s raised right hand — where the owl sits while perched.
-     * Player's right side is {@code (-cos(yaw), -sin(yaw))}: at yaw 0 the player faces +Z (south),
-     * so their right hand points toward -X (west). */
+    /** World position of {@code player}'s raised right hand. Their right side is
+     * {@code (-cos(yaw), -sin(yaw))}: at yaw 0 they face +Z, so the right hand points toward -X. */
     private static Vec3 perchPosition(Player player) {
-        // Same three numbers the render path uses (see OwlPerchPlacement) — this places the HITBOX,
-        // i.e. the owl's logical position. A live tuning session overrides them client-side only, so
-        // while /deluxelib debug owlperch is on the drawn bird and this position drift apart until
-        // the values are pasted back; that's expected for a debug tool.
+        // Places the hitbox from the same numbers the renderer uses (see OwlPerchPlacement). While
+        // /deluxelib debug owlperch tunes them client-side the two drift apart, as expected.
         PerchPlacement placement = OwlPerchPlacement.current();
         float yawRad = player.getYRot() * ((float) Math.PI / 180.0F);
         double sin = Mth.sin(yawRad);
@@ -731,19 +581,14 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 rightZ * placement.side() + fwdZ * placement.forward());
     }
 
-    /** Bonds this owl to {@code player} as its owner. Called once, right after spawning, by the Owl
-     * Statue block's use-handler (statue block → companion entity — see the class javadoc); nothing
-     * else ever needs to call this. From that point on {@link FollowOwnerGoal} and
-     * {@link #checkPossessionGate} key off this specific player. Also arms {@link #pendingAwaken}, so
-     * {@link #tick()} keeps the owl grounded playing the "awake" transition before it takes flight. */
+    /** Bonds this owl to {@code player}. Called once by the Owl Statue block right after spawning.
+     * Arms {@link #pendingAwaken} so {@link #tick()} plays the grounded "awake" transition first. */
     public void bondTo(ServerPlayer player) {
         this.ownerUUID = player.getUUID();
         this.pendingAwaken = true;
     }
 
-    /** The bonded owner, or {@code null} if unbonded, offline, or in a different dimension right now
-     * (chasing across dimensions makes no sense — same guard {@link PossessionGoal} uses). Shared by
-     * the follow, defend and targeting goals. */
+    /** The bonded owner, or {@code null} if unbonded, offline, or in another dimension. */
     private @Nullable Player findOwner() {
         UUID owner = this.ownerUUID;
         if (owner == null) {
@@ -753,27 +598,19 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         return player != null && player.level() == level() ? player : null;
     }
 
-    /**
-     * Whether {@code candidate} is something the owl may attack on its owner's behalf.
-     *
-     * <p>Adds the distance test to {@link #isAttackableForOwner}: {@code DEFEND_ACQUIRE_RANGE} keeps
-     * the owl from launching at something that merely happens to be in the owner's damage history
-     * from a fight two hundred blocks ago.
-     */
+    /** {@link #isAttackableForOwner} plus a distance test, so the owl doesn't launch at something
+     * left over in the owner's damage history from a fight hundreds of blocks away. */
     private boolean canTargetForOwner(@Nullable LivingEntity candidate, @NotNull Player owner) {
         return isAttackableForOwner(candidate)
                 && candidate.distanceToSqr(owner) <= DEFEND_ACQUIRE_RANGE * DEFEND_ACQUIRE_RANGE;
     }
 
     /**
-     * The part of {@link #canTargetForOwner} that is about <em>what</em> may be attacked rather than
-     * how close it is — split out because a spyglass order deliberately reaches past
-     * {@link #DEFEND_ACQUIRE_RANGE}, but must obey the same exclusions.
+     * What may be attacked, ignoring distance — split from {@link #canTargetForOwner} because a
+     * spyglass order reaches past {@link #DEFEND_ACQUIRE_RANGE} but obeys the same exclusions.
      *
-     * <p><b>Other players ARE valid targets</b>, both automatically and by order: if someone attacks
-     * the owner, defending them means fighting that person. The exclusions are only the ones that
-     * would be nonsense — the owner themselves, the owl itself, another companion owl, and
-     * spectators, who cannot be interacted with at all.
+     * <p>Other players are valid targets: defending the owner means fighting whoever attacks them.
+     * Only the owner, this owl, other owls and spectators are excluded.
      */
     private boolean isAttackableForOwner(@Nullable LivingEntity candidate) {
         return candidate != null
@@ -785,20 +622,15 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 && candidate.level() == level();
     }
 
-    /** Whether {@code candidate} is this owl's bonded owner — the one living thing it must never
-     * turn on, however the target was chosen. */
+    /** Whether {@code candidate} is this owl's bonded owner — never a valid target. */
     private boolean isOwner(@NotNull LivingEntity candidate) {
         return this.ownerUUID != null && this.ownerUUID.equals(candidate.getUUID());
     }
 
     /**
-     * Server-side: send the owl after a target the owner picked out with the spyglass
-     * ({@code OwlOrderAttackServerPacket}).
-     *
-     * <p>Re-validates everything rather than trusting the client: that this is the bonded owner, that
-     * the owl is in a state where it can go (not perched, not piloted, not still waking), and that the
-     * target is something it is allowed to attack at all. An order overrides whatever the owl had
-     * picked automatically — the owner outranks the AI.
+     * Server-side: send the owl after a target the owner picked with the spyglass
+     * ({@code OwlOrderAttackServerPacket}). Re-validates owner, owl state and target rather than
+     * trusting the client. An order overrides whatever the owl had picked automatically.
      *
      * @return {@code true} if the order was taken.
      */
@@ -814,17 +646,11 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Copper coming off the statue for as long as the awakening lasts.
+     * Copper shedding off the statue for as long as the awakening lasts.
      *
-     * <p><b>Emitted over time rather than all at once</b>, because a particle's lifetime is fixed by
-     * its own client-side class and cannot be set from here: vanilla's block shards live a handful of
-     * ticks and fall, so a single burst is gone almost before you see it. What <em>is</em> ours to
-     * control is when they are spawned — dribbling a few every couple of ticks keeps the effect on
-     * screen for the whole transition, and ties it to the animation's real duration instead of
-     * guessing at one.
-     *
-     * <p>Runs while the owl is still grounded mid-{@code awake}, so it reads as the statue shedding
-     * itself rather than as a puff that happened to coincide.
+     * <p>Spread over time rather than fired as one burst: particle lifetime is fixed client-side and
+     * vanilla's block shards only live a few ticks, so a single burst would be gone instantly.
+     * Spawning a few every couple of ticks keeps the effect up for the animation's real duration.
      */
     private void emitAwakeningParticles() {
         if (this.tickCount % AWAKEN_PARTICLE_INTERVAL != 0 || !(this.level() instanceof ServerLevel server)) {
@@ -847,16 +673,13 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     private static final double AWAKEN_SHARD_SPEED = 0.08;
     private static final double AWAKEN_SPARK_SPEED = 0.04;
 
-    /** True while the owl is grounded playing the one-shot "awake" transition right after spawning
-     * from the statue (see {@link #bondTo}) — goals that would fly it around must stand down until
-     * this clears (see {@link FollowOwnerGoal#canUse}). */
+    /** True while the owl is grounded playing the one-shot "awake" transition (see {@link #bondTo}).
+     * Every flight goal stands down until it clears. */
     public boolean isAwakening() { return this.pendingAwaken; }
 
-    /** Entry point for the Athena's Sight activation keybind ({@code ActivatePossessionServerPacket}):
-     * starts a possession session if every gate passes, and reports whether it did. No entity id is
-     * needed on the client side to reach this — the packet finds the nearest eligible companion owl
-     * server-side and calls straight in here. On failure, tells the player specifically why for the
-     * two actionable cases (cooldown, hostiles too close) — see {@link #reportPossessionBlocked}. */
+    /** Entry point for the Athena's Sight keybind ({@code ActivatePossessionServerPacket}, which
+     * picks the nearest eligible owl server-side). Starts a session if every gate passes, otherwise
+     * reports why — see {@link #reportPossessionBlocked}. */
     @Override
     public boolean tryStartPossession(ServerPlayer player) {
         PossessionGate gate = checkPossessionGate(player);
@@ -868,28 +691,20 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         return true;
     }
 
-    /** Why {@link #tryStartPossession} refused to start — {@link #checkPossessionGate}'s result.
-     * Only {@link #COOLDOWN} and {@link #HOSTILES_NEARBY} are actionable feedback the player can act
-     * on immediately (wait, or back off); {@link #SETUP} bundles the structural gates (not bonded,
-     * not upgraded, not perched, already piloting something, dead) that shouldn't come up in normal
-     * play once the companion is actually set up, so those stay silent as before. */
+    /** Why {@link #checkPossessionGate} refused. {@link #SETUP} bundles the structural gates (not
+     * bonded, not upgraded, not perched, already piloting, dead) that shouldn't come up in normal
+     * play, so it stays silent; the rest get player feedback. */
     private enum PossessionGate { OK, COOLDOWN, HOSTILES_NEARBY, IN_COMBAT, SETUP }
 
-    /** Same gates {@code canStartPossession} used to check as one big {@code &&}, split out so the
-     * caller can report the SPECIFIC reason instead of a flat "nothing happened". Order matters: the
-     * structural gates are checked first (a broken setup is reported the same way regardless of
-     * cooldown/hostiles), then cooldown, then hostiles — matching the two the player actually asked
-     * to be told about. */
+    /** All activation gates in reporting order: ownership, combat, the rest of the setup, cooldown,
+     * then nearby hostiles. Split out so the caller can report the specific reason. */
     private @NotNull PossessionGate checkPossessionGate(@NotNull ServerPlayer player) {
-        // Ownership and liveness first, so a stranger's key press stays silent rather than being told
-        // about someone else's owl.
+        // Ownership first, so a stranger's key press stays silent.
         if (!this.isAlive() || !player.getUUID().equals(this.ownerUUID)) {
             return PossessionGate.SETUP;
         }
-        // Checked BEFORE the rest of the setup gates, and that ordering is the whole point: an owl in
-        // a fight is never perched, so it would otherwise always fall through to the deliberately
-        // silent SETUP case and the key would appear broken. Athena's Sight is reconnaissance — a
-        // drone you launch from your arm — not something you reach for mid-brawl.
+        // Before the setup gates: a fighting owl is never perched, so it would otherwise fall into
+        // the silent SETUP case and the key would look broken.
         if (this.isInCombat()) {
             return PossessionGate.IN_COMBAT;
         }
@@ -928,70 +743,51 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
-    /** Sends {@code message} to the player's action bar specifically (the bar above the hotbar), not
-     * chat — {@code Player#displayClientMessage}'s exact signature has moved around across MC
-     * versions, so this goes straight through the dedicated vanilla packet instead, which has stayed
-     * a stable single-{@code Component} shape for years. */
+    /** Sends to the action bar rather than chat, through the packet directly:
+     * {@code Player#displayClientMessage}'s signature has moved around across MC versions. */
     private static void sendActionBar(@NotNull ServerPlayer player, @NotNull Component message) {
         player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket(message));
     }
 
-    /** "Debes estar a salvo antes de desplegar el reconocimiento": blocks activation if any hostile
-     * (anything marked {@link Enemy}, vanilla or modded) is alive within {@link #SAFETY_RADIUS} of
-     * the player's own position. Excludes owls themselves: {@code OwlEntity} inherits {@code Enemy}
-     * from the shared flying-mob base it borrows (a hostile-monster leftover), but a companion owl —
-     * this one or anyone else's — is never the threat this gate is guarding against. Without this
-     * exclusion the owl standing right next to the player (to be interacted with) always counted as
-     * its own nearby hostile and permanently blocked activation. */
+    /** You must be safe before deploying recon: blocks activation while any {@link Enemy} is alive
+     * within {@link #SAFETY_RADIUS} of the player. Owls are excluded — {@code OwlEntity} inherits
+     * {@code Enemy} from its flying-mob base, so the companion itself would otherwise count as a
+     * nearby hostile and permanently block activation. */
     private static boolean hasHostilesNearby(ServerPlayer player) {
         AABB area = player.getBoundingBox().inflate(SAFETY_RADIUS);
         return !player.level().getEntitiesOfClass(LivingEntity.class, area,
                 e -> e.isAlive() && e instanceof Enemy && !(e instanceof OwlEntity)).isEmpty();
     }
 
-    /** Radius the area-scan half of {@link #clearAggro} covers — wider than {@link #SAFETY_RADIUS}
-     * since a mob still closing in may be well outside melee range. */
+    /** Radius of {@link #clearAggro}'s area scan — wider than {@link #SAFETY_RADIUS}, since a mob
+     * still closing in may be well outside melee range. */
     private static final double DEAGGRO_RADIUS = 48.0;
-    /** How often {@link #clearAggro} runs while unposed (once a second) — cheap enough to repeat
-     * indefinitely instead of expiring, see its javadoc. */
+    /** How often {@link #clearAggro} runs during the cleanup window. */
     private static final int AGGRO_CHECK_INTERVAL_TICKS = 20;
-    /** How long a {@link #grudgeMobs} entry is kept waiting for its mob to actually re-target the owl
-     * before giving up on it (60s) — long enough for a slow mob to cross realistic distances, short
-     * enough that the map can't grow forever across a long session full of one-off fights. */
+    /** How long a {@link #grudgeMobs} entry is kept before giving up on it — long enough for a slow
+     * mob to close a realistic distance, short enough that the map can't grow all session. */
     private static final int GRUDGE_MAX_AGE_TICKS = 20 * 60;
 
     /**
      * Ticks left in the post-possession aggro cleanup, armed by {@link #stopPossession()}.
      *
-     * <p><b>Why this is a window again, after having deliberately been unbounded.</b> The clean-up
-     * used to run forever while the owl wasn't piloted, because a straggler can take a long time to
-     * reach the owl and any fixed expiry risked missing it. That was correct when the owl never
-     * fought: nothing should ever have been angry at it except leftovers from a session.
+     * <p>Scoped to a window rather than running whenever the owl isn't piloted: "not piloted" is its
+     * normal fighting state, so an unbounded cleanup would make every mob it attacks forget it a
+     * second later and leave the owl untouchable.
      *
-     * <p>It stopped being correct when the owl became a combat companion. "Not piloted" is now its
-     * normal fighting state, so an unbounded clean-up means every mob it attacks is made to forget it
-     * a second later — the owl becomes untouchable and its opponents never fight back. Scoping the
-     * clean-up to "just came out of a possession" restores the original intent: tidy the pilot's mess,
-     * don't disarm the bird.
-     *
-     * <p>Matched to {@link #GRUDGE_MAX_AGE_TICKS} on purpose — the window ends exactly when the grudge
-     * bookkeeping it drives ages out, so there is no stretch of time where entries are tracked but
-     * nothing acts on them.
+     * <p>Matched to {@link #GRUDGE_MAX_AGE_TICKS} so the window ends exactly when the bookkeeping it
+     * drives ages out.
      */
     private static final int AGGRO_CLEAR_WINDOW_TICKS = GRUDGE_MAX_AGE_TICKS;
 
     /** Counts {@link #AGGRO_CLEAR_WINDOW_TICKS} down after a possession ends; 0 = no clean-up owed. */
     private int aggroClearTicks;
 
-    /** Records {@code target} as a mob the owl itself just hit, so {@link #clearAggro} can resolve
-     * its aggro later by IDENTITY rather than having to spatially rediscover it. Called from both
-     * attacks' {@code HitWindow.onHit} — see {@code registerAnimations()}. */
+    /** Records a mob the owl just hit, so {@link #clearAggro} can find it later by identity instead
+     * of rediscovering it spatially. Called from both attacks' {@code HitWindow.onHit}. */
     private void recordGrudge(@NotNull LivingEntity target) {
-        // Only a PILOT's kills leave a mess worth cleaning up. Both attacks are shared with the
-        // defence AI now, so without this the map would fill during ordinary fights — entries nothing
-        // would ever consume (the clean-up only runs after a possession) and that would just sit there
-        // ageing out. Worse, if a fight happened to overlap the post-possession window, the owl would
-        // be made to forget mobs it is actively fighting.
+        // Only a pilot's fights leave a mess worth cleaning up. Both attacks are shared with the
+        // defence AI, so without this the owl would be made to forget mobs it is actively fighting.
         if (!this.isPossessed()) {
             return;
         }
@@ -1006,55 +802,11 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Clears hostile mobs' memory of THIS owl as a target — two complementary passes, run once a
-     * second ({@link #AGGRO_CHECK_INTERVAL_TICKS}) during the post-possession window
-     * ({@link #AGGRO_CLEAR_WINDOW_TICKS}), and paused whenever the owl has a target of its own.
-     *
-     * <p><b>Scope note:</b> this used to run indefinitely whenever the owl wasn't piloted. That was
-     * right while the owl never fought; it is wrong now that it defends its owner, because "not
-     * piloted" is its normal fighting state and clearing then would make every opponent forget it a
-     * second after being hit. See {@link #AGGRO_CLEAR_WINDOW_TICKS}.
-     *
-     * <p>Both attacks (dive and sonic) deliberately credit damage to the owl, not the pilot (see
-     * their {@code HitWindow} configs), so a hit mob's vanilla {@code HurtByTargetGoal} remembers the
-     * OWL and chases it — for vanilla zombies (which register that goal with
-     * {@code setAlertOthers()}) potentially the whole nearby group. That's the intended read while
-     * the owl is actively flying and fighting; once it's back on the player's arm being a passive
-     * companion, a mob train marching toward it (and so toward the player standing right there)
-     * isn't. Each clear sets both {@code getTarget()} (what a running target goal reads each tick)
-     * and {@code getLastHurtByMob()} (what {@code HurtByTargetGoal.canUse()} would otherwise
-     * re-trigger from on its very next evaluation), so the mob genuinely loses interest instead of
-     * re-acquiring the owl a tick later.
-     *
-     * <ol>
-     *   <li><b>{@link #grudgeMobs}</b> — mobs the owl itself hit (see {@link #recordGrudge}), checked
-     *   by IDENTITY: however far away or however long it takes them to catch up, the instant
-     *   {@code getTarget() == this} is true they're cleared and dropped from the map. This is what a
-     *   fixed-radius/fixed-duration scan can never guarantee for a specific mob that started far
-     *   away — there's no "correct" radius or timeout for a problem that's really about how long a
-     *   given mob takes to close a gap, not where it currently is. An entry that never resolves
-     *   within {@link #GRUDGE_MAX_AGE_TICKS} is dropped too, so this can't leak forever.</li>
-     *   <li><b>A {@link #DEAGGRO_RADIUS}-block area scan</b> — the fallback for mobs the owl never
-     *   directly hit but that got pulled in anyway via {@code setAlertOthers()}. There is no event to
-     *   learn exactly who got alerted, so this is necessarily a spatial guess — but since it now runs
-     *   forever (not a bounded window) rather than giving up after a few seconds, a straggler that
-     *   takes longer than expected to close the distance still eventually falls inside the radius.</li>
-     * </ol>
-     */
-    /**
-     * Force-stops every currently RUNNING goal in {@code mob}'s target-selector — confirmed the real
-     * fix, not {@code setTarget(null)} alone, via the debug log: a mob's targeting goal, once
-     * started, stays "running" until ITS OWN {@code canContinueToUse()} says otherwise (checked by
-     * {@link GoalSelector#tick()}'s cleanup pass), and a still-running goal can put the target right
-     * back on its own next {@code tick()}/{@code start()} — exactly the one-tick-later restoration
-     * the log showed after every external clear, on the ONE husk that had been continuously chasing
-     * since being hit (versus the horde-alerted ones, whose goal had apparently already stopped
-     * running by the time the area scan reached them, which is why clearing those stuck on the first
-     * try). Stopping the {@link WrappedGoal} directly (public API, confirmed from
-     * {@code GoalSelector}/{@code WrappedGoal} source) forces its {@code isRunning} flag false, so
-     * the selector's cleanup has nothing left to "continue" — whatever the goal actually is (no need
-     * to know its exact class), it must genuinely re-satisfy its own {@code canUse()} from scratch to
-     * ever retarget the owl again, which for a hurt-based goal means an actual NEW hit.
+     * Force-stops every running goal in {@code mob}'s target-selector. {@code setTarget(null)} alone
+     * is not enough: a targeting goal stays "running" until its own {@code canContinueToUse()} says
+     * otherwise, and can restore the target on its very next tick. Stopping the {@link WrappedGoal}
+     * clears its {@code isRunning} flag, so the goal must re-satisfy {@code canUse()} from scratch —
+     * which for a hurt-based goal means an actual new hit.
      */
     private void forceStopTargeting(@NotNull Mob mob) {
         for (WrappedGoal wrapped : mob.targetSelector.getAvailableGoals()) {
@@ -1069,6 +821,25 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
+    /**
+     * Clears hostile mobs' memory of this owl, in two passes run once a second
+     * ({@link #AGGRO_CHECK_INTERVAL_TICKS}) during the post-possession window
+     * ({@link #AGGRO_CLEAR_WINDOW_TICKS}), paused whenever the owl has a target of its own.
+     *
+     * <p>Both attacks credit damage to the owl rather than the pilot, so hit mobs chase it — and via
+     * vanilla's {@code setAlertOthers()}, potentially their whole group. That is the intended read
+     * while the owl is flying and fighting, but not once it is back on the player's arm. Each pass
+     * clears {@code getTarget()} and {@code getLastHurtByMob()}, or {@code HurtByTargetGoal} would
+     * re-trigger on its next evaluation.
+     *
+     * <ol>
+     *   <li>{@link #grudgeMobs} — mobs the owl hit, matched by identity, so neither distance nor how
+     *   long they take to catch up matters. Entries that never resolve are dropped after
+     *   {@link #GRUDGE_MAX_AGE_TICKS}.</li>
+     *   <li>A {@link #DEAGGRO_RADIUS} area scan — the fallback for mobs pulled in by
+     *   {@code setAlertOthers()}, which fires no event to hook, so it can only be a spatial guess.</li>
+     * </ol>
+     */
     private void clearAggro() {
         if (!(this.level() instanceof ServerLevel)) {
             return;
@@ -1090,14 +861,9 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                         describe(mob.getTarget()), describe(mob.getLastHurtByMob()),
                         this.tickCount - entry.getValue());
             }
-            // Unconditional, NOT gated on getTarget()==this: dropping an entry the moment that check
-            // happened to read false (before re-checking) let a mob that took longer than
-            // GRUDGE_MAX_AGE_TICKS to re-acquire the owl age out of the map WITHOUT ever actually
-            // being cleared — we'd stop watching it while it was still, in fact, targeting the owl.
-            // Stripping it every single check instead (harmless no-op if it's already null) means it
-            // gets corrected again next second even if something re-set it in between, for the whole
-            // age-out window — only after that long with the target repeatedly stripped do we give up
-            // bookkeeping it, by which point it's had every chance to actually lose interest.
+            // Unconditional, not gated on getTarget() == this: a mob that re-acquires the owl
+            // between checks would otherwise age out while still chasing it. Stripping on every pass
+            // is a harmless no-op when it is already null.
             mob.setTarget(null);
             mob.setLastHurtByMob(null);
             this.forceStopTargeting(mob);
@@ -1129,7 +895,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     private void startPossession(ServerPlayer player) {
-        // checkPossessionGate now requires isPerched(), so this always launches the owl off the arm.
+        // checkPossessionGate requires isPerched(), so this always launches the owl off the arm.
         this.stopPerching();
         this.controller = player;
         this.entityData.set(CONTROLLER_ID, player.getId());
@@ -1144,29 +910,24 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         this.controlSonicCooldown = 0;
         this.setScreeching(false);
         PossessionManager.begin(player, this);
-        // Owls see in the dark — grant the pilot night vision for the session's duration. Applied here
-        // (not refreshed per-tick) with an effectively-infinite duration, since applyOwlNightVision is
-        // paired with removeOwlNightVision on every possession-ending path (stopPossession, die,
-        // remove), not left to expire naturally.
+        // Owls see in the dark. Effectively infinite duration: every possession-ending path
+        // (stopPossession, die, remove) removes it explicitly rather than letting it expire.
         applyOwlNightVision(player);
-        // The airborne setup and per-tick control live in PossessionGoal (priority 0, MOVE+LOOK),
-        // which the goal selector starts as soon as isPossessed() flips true. Driving movement from
-        // a goal with AI on — the same proven path as the arpy's own DiveAttackGoal — is what
-        // actually lets travel() apply the velocity/rotation we set (setNoAi disabled that).
+        // Airborne setup and per-tick control live in PossessionGoal, which the selector starts as
+        // soon as isPossessed() flips true. It has to run as a goal with AI on: setNoAi stops
+        // travel() from applying the velocity and rotation we set.
     }
 
     /**
-     * The pilot's raw 3D aim (unit vector), computed directly from {@link #controlYaw}/
-     * {@link #controlPitch} rather than from this entity's own {@code getXRot()}/{@code getYRot()}.
+     * The pilot's raw 3D aim (unit vector), from {@link #controlYaw}/{@link #controlPitch} rather
+     * than this entity's own rotation.
      *
-     * <p>Reason: vanilla's default {@code LookControl.tick()} — run every tick from {@code Mob.aiStep()}
-     * right after the goal selector, so right after {@link PossessionGoal#tick()} sets {@code xRot} —
-     * resets {@code xRot} back toward 0 whenever nothing has actively called {@code lookAt(...)},
-     * which nothing does here. {@link #registerGoals} never disables that (no flying-mob look control
-     * override exists in this codebase), so {@code getXRot()}/{@code getViewVector()} cannot be trusted
-     * for aim while possessed — reading them made the sonic beam always fire level regardless of pitch.
-     * This method and the movement code in {@link PossessionGoal#tick()} both read the same raw fields,
-     * so aim, flight direction and the beam can never disagree.
+     * <p>Vanilla's default {@code LookControl.tick()} runs right after the goal selector — so right
+     * after {@link PossessionGoal#tick()} sets {@code xRot} — and resets {@code xRot} toward 0
+     * whenever nothing calls {@code lookAt(...)}, which nothing here does. So
+     * {@code getXRot()}/{@code getViewVector()} cannot be trusted for aim while possessed; reading
+     * them made the sonic beam always fire level. Movement reads the same raw fields, so aim, flight
+     * direction and beam can never disagree.
      */
     private Vec3 pilotLookVector() {
         float yawRad = this.controlYaw * ((float) Math.PI / 180.0F);
@@ -1176,18 +937,13 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Where the sonic beam actually points — the one aim source for both ways the screech can be
-     * fired, used by its {@code HitWindow}'s {@code facing()} and by its knockback direction.
+     * The one aim source for the screech, shared by its {@code HitWindow}'s {@code facing()} and its
+     * knockback direction.
      *
-     * <p>Piloted, that is {@link #pilotLookVector()}: the player's raw aim, for the reasons in its
-     * javadoc. Fired by the owl's own defence there is no pilot at all — {@code controlYaw}/
-     * {@code controlPitch} are whatever the last session left behind — so the direction is computed
-     * straight from the owl's eyes to the middle of its target. Without this split an AI screech
-     * would fire along a stale heading from some previous flight, and look like the beam simply
-     * missing for no reason.
-     *
-     * <p>Falls back to the entity's own look only if there is somehow no target, which the callers
-     * make unreachable in practice.
+     * <p>Piloted, that is {@link #pilotLookVector()}. Fired by the owl's own defence there is no
+     * pilot and {@code controlYaw}/{@code controlPitch} hold whatever the last session left behind,
+     * so the direction is computed from the owl's eyes to the middle of its target instead. Falls
+     * back to the entity's own look only if there is no target, which the callers make unreachable.
      */
     private Vec3 sonicAimVector() {
         if (this.isPossessed()) {
@@ -1212,9 +968,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         player.removeEffect(MobEffects.NIGHT_VISION);
     }
 
-    /** Ends a live possession: lands the owl back on the player's arm (it always launched from there
-     * — see {@link #checkPossessionGate}) and starts the re-possession cooldown. Safe to call when the
-     * controller has gone (logout/death) — it just skips the return-to-arm and resumes free flight. */
+    /** Ends a possession: lands the owl back on the player's arm and starts the cooldown. Safe to
+     * call when the controller is gone (logout/death) — it just resumes free flight instead. */
     @Override
     public void stopPossession() {
         ServerPlayer player = this.controller;
@@ -1230,9 +985,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         this.controlSonicCooldown = 0;
         this.setDiving(false);
         this.setScreeching(false);
-        // Immediate pass right now (catches whoever's already close), then arm the window so tick()'s
-        // per-second check keeps catching stragglers as they arrive. Outside this window the owl is
-        // allowed to be fought normally — see AGGRO_CLEAR_WINDOW_TICKS.
+        // One pass now for whoever is already close, then arm the window for stragglers. Outside it
+        // the owl is fought normally — see AGGRO_CLEAR_WINDOW_TICKS.
         this.aggroClearTicks = AGGRO_CLEAR_WINDOW_TICKS;
         this.clearAggro();
         if (player != null) {
@@ -1243,8 +997,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
             return;     // dying owl: leave the corpse to the base death handling
         }
         if (player != null && player.isAlive() && !player.isRemoved()) {
-            // PerchGoal (same priority-0 band PossessionGoal just vacated) picks this straight back
-            // up next tick, so the auto-perch reads as landing rather than freezing mid-air.
+            // PerchGoal picks this up next tick, so it reads as landing rather than freezing.
             this.startPerching(player);
         } else {
             this.setDeltaMovement(Vec3.ZERO);
@@ -1254,11 +1007,9 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Drives the owl while a player pilots it. Runs as an exclusive MOVE+LOOK goal (priority 0) with
-     * AI on — driving movement from a goal with AI on is what makes {@code travel()} actually apply
-     * the velocity/rotation we set each tick. Mirrors the controller's aim onto the owl (the owl IS
-     * the camera) and turns W into flight (elytra-style: the only movement key, all steering is the
-     * mouse).
+     * Drives the owl while a player pilots it, as an exclusive MOVE+LOOK goal at priority 0. Mirrors
+     * the controller's aim onto the owl (the owl is the camera) and flies elytra-style: W is the
+     * only movement key, all steering is the mouse.
      */
     private class PossessionGoal extends Goal {
         PossessionGoal() {
@@ -1305,10 +1056,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 stopPossession();
                 return;
             }
-            // Attack state machine: DIVE (diving) → automatic RETURN pull-up → free control. The
-            // screech's own timers are NOT here — they live in OwlEntity.tick(), because the defence
-            // AI fires the same screech with no pilot to tick them down. Still mutually exclusive:
-            // performSonicAttack / performControlledAttack each refuse while the other is running.
+            // Attack state machine: dive → automatic pull-up → free control. The screech's timers
+            // live in OwlEntity.tick() instead, since the defence AI fires it with no pilot.
             if (OwlEntity.this.controlAttackCooldown > 0) {
                 if (--OwlEntity.this.controlAttackCooldown == 0) {
                     setDiving(false);   // end the dive_attack swing / HitWindow
@@ -1319,8 +1068,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 OwlEntity.this.controlReturnTicks--;
             }
 
-            // Aim comes straight from the controlling client (sent with the input packet), not from
-            // the server player's rotation — that isn't reliably synced while the camera is the owl.
+            // Aim comes from the client: the server player's rotation isn't synced while piloting.
             float yaw = OwlEntity.this.controlYaw;
             float pitch = OwlEntity.this.controlPitch;
             setYRot(yaw);
@@ -1328,39 +1076,32 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
             OwlEntity.this.yHeadRot = yaw;
             OwlEntity.this.yBodyRot = yaw;
 
-            // 3D look direction (unit) — the aim, steerable every tick. See pilotLookVector() for why
-            // this is computed from controlYaw/controlPitch directly rather than read back off
-            // getXRot()/getYRot() right after setting them above.
+            // Steerable aim — see pilotLookVector() for why it isn't read back off getXRot().
             Vec3 look = pilotLookVector();
             double lookX = look.x, lookY = look.y, lookZ = look.z;
 
             Vec3 desired;
             double accel;
             if (OwlEntity.this.controlSonicTicks > 0) {
-                // Screech: brake to a hover and hold the aim. The ray is fired along the look vector,
-                // so drifting through the release tick would smear the beam across the sky — and a
-                // stationary owl telegraphing a charged shout is the read we want anyway. Still fully
-                // steerable: the aim above is applied every tick regardless.
+                // Screech: brake to a hover, still fully steerable. Drifting through the release
+                // tick would smear the beam across the sky.
                 desired = Vec3.ZERO;
                 accel = SONIC_BRAKE_ACCEL;
             } else if (OwlEntity.this.controlAttackCooldown > 0) {
-                // Auto-dive: while the strike is active the owl commits a fast downward-biased swoop
-                // (the dive move itself — no W needed), still steerable by the aim. This is what
-                // carries it onto the target so the dive_attack HitWindow lands.
+                // Auto-dive: a fast downward-biased swoop, no W needed, that carries the owl onto
+                // the target so the dive_attack HitWindow lands.
                 desired = new Vec3(lookX, lookY - POSSESSED_DIVE_DOWN_BIAS, lookZ)
                         .normalize().scale(POSSESSED_DIVE_SPEED);
                 accel = POSSESSED_DIVE_ACCEL;
             } else if (OwlEntity.this.controlReturnTicks > 0) {
-                // Automatic pull-up return: climb back out with a little forward drift along the
-                // aim's heading, so the owl swoops up after the strike. Horizontal part of `look`,
-                // re-normalized — pitch is dropped on purpose (the climb speed is its own term).
+                // Pull-up: climb out with a little forward drift along the aim's heading. Pitch is
+                // dropped on purpose — the climb speed is its own term.
                 Vec3 horiz = new Vec3(look.x, 0.0, look.z);
                 Vec3 horizDir = horiz.lengthSqr() > 1.0E-6 ? horiz.normalize() : new Vec3(0.0, 0.0, 1.0);
                 desired = new Vec3(horizDir.x * POSSESSED_RETURN_FWD, POSSESSED_RETURN_CLIMB, horizDir.z * POSSESSED_RETURN_FWD);
                 accel = POSSESSED_RETURN_ACCEL;
             } else {
-                // Elytra-style cruise: the ONLY movement key is W (thrust along the look direction);
-                // all steering is the mouse. No back / strafe / vertical keys.
+                // Cruise: W thrusts along the look direction, the mouse does all the steering.
                 double thrust = OwlEntity.this.controlInput.forward() ? 1.0 : 0.0;
                 desired = new Vec3(lookX, lookY, lookZ).scale(thrust * POSSESSED_SPEED);
                 accel = POSSESSED_ACCEL;
@@ -1399,9 +1140,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
 
     @Override
     public void die(@NotNull DamageSource source) {
-        // Release the controller before the corpse logic runs so the player isn't left flagged as
-        // possessing (which would keep their body invulnerable forever). No return teleport here —
-        // the owl is dying.
+        // Release the controller before the corpse logic runs, or the player stays flagged as
+        // possessing and their body invulnerable. No return teleport — the owl is dying.
         if (!this.level().isClientSide() && this.isPossessed()) {
             ServerPlayer player = this.controller;
             this.controller = null;
@@ -1413,32 +1153,23 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 removeOwlNightVision(player);
             }
         }
-        // A dying owl never reaches stopPerching(), so its claim on the owner's hand has to be
-        // released here too or that hotbar slot stays unusable for the rest of the session.
+        // A dying owl never reaches stopPerching(), so the hand is released here too.
         releasePerchedHand();
         super.die(source);
     }
 
     /**
-     * Releases the controller when the owl is explicitly removed without dying — {@code kill()} and
-     * {@code discard()}, which are the calls that actually route through here.
+     * Releases the controller when the owl is removed without dying ({@code kill}/{@code discard}),
+     * or their body would stay invulnerable with no owl left to end the session.
      *
-     * <p>Deliberately <b>not</b> the catch-all it was once described as: chunk unload and world
-     * shutdown never reach this override, because they go through {@code Entity.setRemoved} (which
-     * is {@code public final}, so it cannot be intercepted) to {@code onRemoval} instead. Those two
-     * cases are closed on the library side by
-     * {@link net.darkblade.deluxelib.entity.possession.PossessionEvents}, whose sweep clears
-     * {@link net.darkblade.deluxelib.entity.possession.PossessionManager} on
-     * {@code EntityLeaveLevelEvent}, player logout and server stop — which matters because that map
-     * is {@code static}, so an entry left behind would outlive the world and keep granting the
-     * player damage immunity.
+     * <p>Not a catch-all: chunk unload and shutdown bypass this override entirely, via the
+     * {@code final Entity.setRemoved} → {@code onRemoval} path. Those are covered by
+     * {@link net.darkblade.deluxelib.entity.possession.PossessionEvents}, which sweeps the
+     * {@code static} {@link net.darkblade.deluxelib.entity.possession.PossessionManager} map — an
+     * entry left there would outlive the world and keep granting the player damage immunity.
      */
     @Override
     public void remove(net.minecraft.world.entity.Entity.@NotNull RemovalReason reason) {
-        // Covers explicit removal without death (kill/discard) — NOT chunk unload, which bypasses
-        // remove() entirely via the final setRemoved -> onRemoval path; PossessionEvents sweeps that
-        // case. Either way the controller must not stay flagged as possessing, or their body would
-        // stay invulnerable with no owl left to end the session.
         if (!this.level().isClientSide() && this.controller != null) {
             PossessionManager.end(this.controller);
             removeOwlNightVision(this.controller);
@@ -1449,38 +1180,29 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     // -----------------------------------------------------------------------
-    // Goals — no combat/targeting: this is a companion, not a monster. Always airborne (see
-    // tick()): no takeoff/landing/ground-wander goals are registered at all, so every
-    // AbstractFlyingEntity config hook tied to that state machine (min/max flight altitude, ground
-    // rest ticks, landing speeds, takeoff tilt, etc.) is dead for this entity and deliberately
-    // omitted rather than left overriding nothing.
+    // Goals — always airborne (see tick()): no takeoff/landing/ground-wander goals are registered,
+    // so every AbstractFlyingEntity config hook tied to that state machine (flight altitude, ground
+    // rest ticks, landing speeds, takeoff tilt) is dead here and deliberately left unoverridden.
     // -----------------------------------------------------------------------
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        // Highest priority: while possessed this claims MOVE+LOOK so nothing else can run.
+        // Possession and perching both claim MOVE+LOOK at priority 0, so they beat everything below.
         this.goalSelector.addGoal(0, new PossessionGoal());
-        // Perching also claims MOVE+LOOK, so FollowOwnerGoal stands down while on the arm.
         this.goalSelector.addGoal(0, new PerchGoal());
         // Defending outranks following: while there's a target the owl leaves the owner's side.
-        // Both possession and perching sit at priority 0 with MOVE+LOOK, so piloting or being on the
-        // arm already beats fighting without this goal needing its own guard for either.
         this.goalSelector.addGoal(1, new DefendOwnerGoal());
         this.goalSelector.addGoal(2, new FollowOwnerGoal());
 
-        // Target acquisition. Both are TARGET-flagged, so they run alongside the movement goals
-        // rather than competing with them.
+        // TARGET-flagged, so they run alongside the movement goals rather than competing with them.
         this.targetSelector.addGoal(1, new OwnerHurtByGoal());
         this.targetSelector.addGoal(2, new OwnerHurtGoal());
     }
 
     /**
-     * Holds the owl glued to its owner's raised right arm while perched, by writing its position
-     * directly every tick (no pathfinding, no velocity) — the arm is a moving target and any
-     * acceleration-based follow would visibly lag behind it.
-     *
-     * <p>The owl's body yaw is matched to the owner's so it always faces the same way they do,
-     * which is what makes it read as riding on them rather than hovering nearby.
+     * Holds the owl on its owner's raised right arm by writing its position directly every tick: the
+     * arm is a moving target, and any acceleration-based follow would visibly lag behind it. Body
+     * yaw is matched to the owner's so it reads as riding on them rather than hovering nearby.
      */
     private class PerchGoal extends Goal {
         PerchGoal() {
@@ -1511,8 +1233,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
 
         @Override
         public void stop() {
-            // The owner may have logged out / died rather than dismissing it — make sure the synced
-            // flag can't stay stuck on with nobody to perch on.
+            // The owner may have logged out or died — don't leave the synced flag stuck on.
             if (isPerched() && findPerchTarget() == null) {
                 stopPerching();
             }
@@ -1544,12 +1265,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
-    /**
-     * Acquires whoever just hurt the owner. Vanilla's {@code OwnerHurtByTargetGoal} would be the
-     * obvious reuse, but it is typed to {@code TamableAnimal} and this owl is an
-     * {@link net.darkblade.deluxelib.entity.AbstractFlyingEntity}, so it gets its own — small enough
-     * that the type gymnastics to share vanilla's would cost more than the duplication.
-     */
+    /** Acquires whoever just hurt the owner. Vanilla's {@code OwnerHurtByTargetGoal} is typed to
+     * {@code TamableAnimal}, which this owl is not, so it gets its own. */
     private class OwnerHurtByGoal extends Goal {
         OwnerHurtByGoal() {
             setFlags(EnumSet.of(Flag.TARGET));
@@ -1560,9 +1277,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
             if (isPossessed() || isPerched() || isAwakening()) {
                 return false;
             }
-            // Don't yank the owl off a fight it is already committed to: the owner's
-            // getLastHurtByMob() lingers for seconds, so without this the goal would keep re-electing
-            // the same attacker over whatever the owl is currently diving at.
+            // Don't pull the owl off a fight it is committed to: getLastHurtByMob() lingers for
+            // seconds and would keep re-electing the same attacker.
             LivingEntity current = getTarget();
             if (current != null && current.isAlive()) {
                 return false;
@@ -1612,22 +1328,16 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * The owl's melee defence: an aerial dive-bomb run against its current target.
+     * The owl's melee defence: an aerial dive-bomb run against its current target. Structure ported
+     * from {@code ArpyEntity.DiveAttackGoal} — climb to an offset point above the target
+     * (REPOSITION), turn to face it (ALIGN), commit to a fast descent (DIVE), climb back out
+     * (PULLUP), then go round again from a fresh angle. Direct velocity control with navigation
+     * stopped, like every other goal here.
      *
-     * <p>Structure ported from {@code ArpyEntity.DiveAttackGoal}, which is the same manoeuvre already
-     * proven in-game: climb to an offset point above the target (REPOSITION), turn to face it
-     * (ALIGN), commit to a fast descent (DIVE), then climb back out (PULLUP) and go round again from
-     * a fresh angle. Direct velocity control with navigation stopped, like every other goal on this
-     * entity.
-     *
-     * <p>The damage is not applied here. Raising {@link #setDiving(boolean)} plays {@code dive_attack},
-     * and the {@link HitWindow} attached to that animation is what deals damage, knockback and the
-     * grudge bookkeeping — the exact same path the possessed dive uses. This goal only flies the owl
-     * into position and decides when the dive is on.
-     *
-     * <p>It deliberately does <em>not</em> touch {@code controlAttackCooldown}/{@code setDiving} state
-     * owned by {@link PossessionGoal}: that field is only ticked down while a pilot is in control, so
-     * borrowing it here would leave {@code isDiving()} stuck true with nothing to clear it.
+     * <p>The damage is not applied here: {@link #setDiving(boolean)} plays {@code dive_attack} and
+     * its {@link HitWindow} does the rest, the same path the possessed dive uses. This goal
+     * deliberately leaves {@code controlAttackCooldown} alone — that field only ticks down while a
+     * pilot is in control, so borrowing it would leave {@code isDiving()} stuck true.
      */
     private class DefendOwnerGoal extends Goal {
         private enum Phase { REPOSITION, ALIGN, DIVE, PULLUP }
@@ -1694,8 +1404,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
             }
             getLookControl().setLookAt(target, 30.0F, 30.0F);
             // A screech in progress owns the owl: brake to a hover so the ray doesn't smear across
-            // the sky between windup and release, exactly as the piloted screech does. The phase
-            // machine resumes once the clip is done.
+            // the sky, exactly as the piloted screech does. The phase machine resumes after it.
             if (OwlEntity.this.controlSonicTicks > 0) {
                 Vec3 cur = getDeltaMovement();
                 setDeltaMovement(cur.subtract(cur.scale(SONIC_BRAKE_ACCEL)));
@@ -1748,10 +1457,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
             if (Math.abs(Mth.wrapDegrees(targetYaw - getYRot())) >= ALIGN_YAW_THRESHOLD) {
                 return;   // still turning
             }
-            // Lined up. With the screech unlocked and off cooldown, shout from here instead of
-            // diving: it is the ranged option, and the owl is already at range having climbed to its
-            // attack altitude. The cooldown is what makes this alternate with dives rather than
-            // replace them.
+            // Lined up. If the screech is ready, shout from here instead of diving — its cooldown
+            // is what makes the two alternate rather than one replacing the other.
             if (canScreechAt(target)) {
                 performSonicAttack();
                 pickReposition();
@@ -1805,9 +1512,8 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         }
     }
 
-    /** True while the owl is engaged — it has picked, or been given, something to attack. Used to keep
-     * possession out of fights (see {@link #checkPossessionGate}); resolves itself as soon as
-     * {@code DefendOwnerGoal} drops the target, after which the owl flies home on its own. */
+    /** True while the owl has something to attack. Keeps possession out of fights (see
+     * {@link #checkPossessionGate}); clears itself when {@code DefendOwnerGoal} drops the target. */
     private boolean isInCombat() {
         LivingEntity target = getTarget();
         return target != null && target.isAlive();
@@ -1829,19 +1535,16 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     /**
-     * Default un-possessed behaviour once awake: a flying companion that stays near its bonded owner
-     * (see {@link #wake}), driven by direct velocity control (same idiom as {@link PossessionGoal})
-     * rather than pathfinding. While the owner is moving (or just stopped), it chases/holds a point
-     * just off their side and above head height; once they've stood still for
-     * {@link #ORBIT_AFTER_TICKS}, it switches to slowly orbiting them instead of freezing in place.
+     * Default behaviour once awake and un-possessed: stays near the bonded owner under direct
+     * velocity control rather than pathfinding. While the owner moves it holds a point just off
+     * their side and above head height; once they have stood still for {@link #ORBIT_AFTER_TICKS} it
+     * slowly orbits them instead of freezing in place.
      */
     private class FollowOwnerGoal extends Goal {
         private static final double FOLLOW_SPEED = 0.5;
-        /** Position-error gain (kp) and velocity damping (kd) of a small critically-damped PD
-         * controller (see the comment in {@link #tick()}) — not independent knobs to retune loosely:
-         * raising {@code FOLLOW_POS_GAIN} or lowering {@code FOLLOW_DAMPING} reintroduces the ringing
-         * this pair was specifically chosen to avoid (verified via the linear recurrence's
-         * eigenvalues — these keep them real, i.e. non-oscillating). */
+        /** Gain (kp) and damping (kd) of the PD controller in {@link #tick()}. Tune them as a pair:
+         * raising the gain or lowering the damping brings back the ringing they were chosen to avoid
+         * (they keep the recurrence's eigenvalues real, i.e. non-oscillating). */
         private static final double FOLLOW_POS_GAIN = 0.04;
         private static final double FOLLOW_DAMPING = 0.4;
         private static final double FOLLOW_HEIGHT = 2.4;
@@ -1901,20 +1604,17 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 double rad = Math.toRadians(this.orbitAngle);
                 target = curPos.add(Math.cos(rad) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(rad) * ORBIT_RADIUS);
             } else {
-                // A point off to the player's side and above head height — flying beside you, not
-                // perched anywhere (no shoulder/ground pose exists yet either way).
+                // A point off the player's side, above head height.
                 float yawRad = player.getYRot() * ((float) Math.PI / 180.0F);
                 double sideX = Math.cos(yawRad) * FOLLOW_SIDE;
                 double sideZ = Math.sin(yawRad) * FOLLOW_SIDE;
                 target = curPos.add(sideX, FOLLOW_HEIGHT, sideZ);
             }
 
-            // Critically-damped PD controller: acceleration = kp*error - kd*velocity. NOT the old
-            // "distance-proportional target velocity fed through a second smoothing pass" — cascading
-            // two first-order lags like that makes the whole thing a lightly-damped 2nd-order system,
-            // which rings/overshoots on any large initial gap (right after spawning grounded, or right
-            // after un-perching, both start far from the follow point) — the exact "approaches, backs
-            // off, approaches again" ping-pong before it eventually settles.
+            // Critically-damped PD controller: acceleration = kp*error - kd*velocity. Feeding a
+            // distance-proportional target velocity through a second smoothing pass instead cascades
+            // two lags into a lightly-damped 2nd-order system, which overshoots and ping-pongs on
+            // any large initial gap (spawning grounded, un-perching).
             Vec3 error = target.subtract(position());
             Vec3 velocity = getDeltaMovement();
             Vec3 accel = error.scale(FOLLOW_POS_GAIN).subtract(velocity.scale(FOLLOW_DAMPING));
@@ -1946,9 +1646,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
     }
 
     // -----------------------------------------------------------------------
-    // Animatable — CopperOwlModel geometry, OwlAnimation keyframes. No death animation registered
-    // (see registerAnimations()) — ArpyAnimation's death_falling/hit_ground target bones that don't
-    // exist on this model and crashed the client; falls back to vanilla death timing for now.
+    // Animatable — CopperOwlModel geometry, OwlAnimation keyframes
     // -----------------------------------------------------------------------
     @Override
     public @NotNull MobAnimator<OwlEntity> animator() {
@@ -1957,8 +1655,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
 
     @Override
     public void registerAnimations() {
-        // The owl's own Blockbench export (see CopperOwlModel) instead of the borrowed arpy set —
-        // bone names match 1:1, death included.
+        // The owl's own Blockbench export (see CopperOwlModel), not the borrowed arpy set.
         StandardAnimation idleFly = new StandardAnimation("idle_fly",
                 new AnimSource(() -> OwlAnimation.FLY_IDLE), Loop.REPEATING, 0, 3, 0.7246F);
         StandardAnimation flySprint = new StandardAnimation("fly_sprint",
@@ -1967,48 +1664,38 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 new AnimSource(() -> OwlAnimation.DIVE_ATTACK), Loop.REPEATING, 0, 0, 0.517F);
         StandardAnimation diveReturn = new StandardAnimation("dive_attack_return",
                 new AnimSource(() -> OwlAnimation.DIVE_RECOVER), Loop.PLAY_ONCE, 0, 0, 0.2433F);
-        // Two-stage death: FALL loops open-ended while the corpse drops, then chains into HIT the
-        // moment it lands. Both are the owl's own clips now — the previous attempt borrowed the arpy's
-        // death_falling/hit_ground, which animate bones like "torso" that CopperOwlModel does not
-        // have, and that crashed the client with IllegalArgumentException("Cannot animate torso")
-        // the instant an owl died. Any future death clip must stick to this model's bone names.
+        // Two-stage death: FALL loops while the corpse drops, then chains into HIT on landing. Any
+        // death clip must use this model's bone names — the arpy's animate bones like "torso", which
+        // CopperOwlModel lacks, and crashed the client with "Cannot animate torso" on every death.
         StandardAnimation deathFalling = new StandardAnimation("death_falling",
                 new AnimSource(() -> OwlAnimation.FALL), Loop.REPEATING, 0, 0, 0.5F);
         StandardAnimation hitGround = new StandardAnimation("hit_ground",
                 new AnimSource(() -> OwlAnimation.HIT), Loop.PLAY_ONCE, 0, 0, 1.0F);
-        // One-shot "waking up" transition played right after spawning from the Owl Statue (see
-        // bondTo()/tick()): grounded, eyes-closed/folded → open/extended, then the owl takes flight.
-        // Triggered imperatively (animator.play(...)) rather than by play condition — same pattern as
-        // dive_attack_return — since it needs to run exactly once, not restart every tick it's eligible.
+        // One-shot "waking up" transition after spawning from the Owl Statue (see bondTo()/tick()):
+        // grounded and folded → open, then the owl takes flight. Triggered imperatively rather than
+        // by play condition, so it runs exactly once instead of restarting every eligible tick.
         StandardAnimation awake = new StandardAnimation("awake",
                 new AnimSource(() -> OwlAnimation.AWAKE), Loop.PLAY_ONCE, 0, 0, 2.7917F);
-        // Sonic screech — triggered imperatively from performSonicAttack(), same as awake/dive_return.
-        // Length is SONIC_TOTAL_TICKS expressed in seconds: the counter and the clip must agree or the
-        // clip gets cut short (or the owl hangs braked after it visually ends).
-        // TODO: swap the AnimSource for the owl's own SONIC_SCREECH clip once it is exported from
-        // Blockbench (bone names must match CopperOwlModel's — that is what crashed death_falling).
-        // DIVE_ATTACK stands in only so the mechanic is testable: it is a looping 0.517 s pose, so the
-        // owl just holds the dive pose flapping through the screech for now.
+        // Sonic screech — triggered imperatively from performSonicAttack(). Length is
+        // SONIC_TOTAL_TICKS in seconds: clip and counter must agree, or the clip is cut short (or the
+        // owl hangs braked after it visually ends).
+        // TODO: swap in the owl's own SONIC_SCREECH clip once exported from Blockbench (bone names
+        // must match CopperOwlModel's). DIVE_ATTACK is a stand-in so the mechanic is testable.
         StandardAnimation sonic = new StandardAnimation("sonic_screech",
                 new AnimSource(() -> OwlAnimation.DIVE_ATTACK), Loop.PLAY_ONCE, 0, 0, SONIC_TOTAL_TICKS / 20.0F);
-        // Pin the exact tick count: BaseAnimation's seconds→ticks conversion truncates (1.3F * 20
-        // lands just under 26), and this has to equal SONIC_TOTAL_TICKS or the clip and the state
-        // counter drift a tick apart.
+        // Pin the tick count: BaseAnimation's seconds→ticks conversion truncates, so without this
+        // the clip and the state counter drift a tick apart.
         sonic.setDurationTicks(SONIC_TOTAL_TICKS);
         sonic.blendInMs(120).blendOutMs(200);
-        // NOTE: OwlAnimation.UNACTIVE (the folded-wings/closed-eyes resting pose AWAKE transitions out
-        // of) is NOT registered here — perching on the owner's arm intentionally shows no animation at
-        // all (the model's bare rest pose). UNACTIVE is reserved for the Owl Statue block's own static
-        // visual (a separate, not-yet-built renderer), not this entity.
+        // OwlAnimation.UNACTIVE is deliberately not registered: perching shows the model's bare rest
+        // pose, and UNACTIVE belongs to the Owl Statue block's own (not yet built) renderer.
 
         idleFly.blendInMs(350).blendOutMs(250);
         flySprint.playbackSpeed(1.2F);
         flySprint.blendInMs(250).blendOutMs(250);
         diveAttack.blendInMs(100).blendOutMs(250);
         // blockAdditive on both: the rig runs a look-at additive on the head (see CopperOwlModel's
-        // Rig), and without this a dead owl keeps turning to track the player all the way down and
-        // after it lands. Same reasoning as AthenianEntity's deaths. Note the arpy does NOT do this
-        // and has the same latent problem — copying it verbatim would have copied the bug.
+        // Rig), so without this a dead owl keeps tracking the player all the way down.
         deathFalling.blendInMs(200).blockAdditive();
         // Short blend: the fall→impact cut IS the impact — a long crossfade softens it away.
         hitGround.blendInMs(100).blockAdditive();
@@ -2022,42 +1709,36 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 .onHit((attacker, target) -> this.recordGrudge(target))
                 .applyTo(diveAttack);
 
-        // The screech itself: a 3D ray along the pilot's aim, born at the beak, cut short by terrain,
-        // firing on ONE tick — an instantaneous boom, not a sweep, so the hit lands exactly when the
-        // sound and the particles do. Credit goes to the owl (sonicBoom(attacker)), not its pilot: the
-        // bird is what the enemy sees and should aggro onto.
+        // A ray along the aim, born at the beak, cut short by terrain, firing on one tick so the hit
+        // lands exactly when the sound and particles do. Damage is credited to the owl, not the
+        // pilot: the bird is what the enemy sees and should aggro onto.
         HitWindow.of(SONIC_RELEASE_TICK, SONIC_RELEASE_TICK)
                 .shape(AttackShape.beam(SONIC_RANGE, SONIC_RADIUS))
                 .anchor(AttackAnchor.look(SONIC_ORIGIN_FORWARD, 0.0F, 0.0F))
-                // NOT aimAlongLook(): that reads attacker.getViewVector(), which depends on getXRot() —
-                // and vanilla's default LookControl resets this mob's xRot every tick (see
-                // pilotLookVector()'s javadoc). facing() with the pilot's own raw aim is the fix; it's
-                // also exactly what already steers the owl's flight, so the beam can't ever point
-                // somewhere the owl itself isn't actually looking.
+                // Not aimAlongLook(): it reads getViewVector(), which depends on getXRot(), and
+                // vanilla's LookControl resets xRot every tick — see pilotLookVector().
                 .facing(e -> this.sonicAimVector())
                 .clipToBlocks()
                 .damage(SONIC_DAMAGE)
                 .poiseDamage(SONIC_POISE_DAMAGE)
                 .knockback(0.0F)   // the radial default is wrong for a ray — see onHit below
                 .damageSource(e -> e.damageSources().sonicBoom(e))
-                // Never the pilot's own defenceless body standing on the ground, and never another owl.
+                // Never the pilot's own body, never another owl.
                 .filter(t -> !(t instanceof OwlEntity) && t.getId() != this.getControllerId())
                 .onSweep((attacker, origin, facing, shape, hits) -> {
-                    // Draws the beam that was actually TESTED — already shortened at the wall by
-                    // clipToBlocks — so the visual can never claim reach the hitbox doesn't have.
+                    // Draws the beam that was actually tested, already shortened by clipToBlocks, so
+                    // the visual can't claim reach the hitbox doesn't have.
                     if (!(attacker.level() instanceof ServerLevel server)
                             || !(shape instanceof AttackShape.Beam beam)) {
                         return;
                     }
                     Vec3 end = origin.add(facing.normalize().scale(beam.length()));
-                    // longDistance: the owl can be sent a long way off with the spyglass, and the
-                    // default 32-block particle cut-off would make its screech invisible from exactly
-                    // the range you use a spyglass at.
+                    // longDistance: the default 32-block cut-off would hide the screech at exactly
+                    // the range the spyglass sends the owl to.
                     ParticleFx.beam(server, MythosMortalsRegistry.OWL_BOOM.get(), origin, end,
                             SONIC_PARTICLE_SPACING, SONIC_PARTICLE_SKIP, true);
                     attacker.playSound(SoundEvents.WARDEN_SONIC_BOOM, 2.0F, 1.5F);
-                    // Recoil for the pilot only: the camera IS the owl, so this reads as the shout
-                    // kicking back. Shaking the whole level would rattle players nowhere near it.
+                    // Recoil for the pilot only — the camera is the owl.
                     ServerPlayer pilot = this.controller;
                     if (pilot != null) {
                         ScreenShake.forPlayer(pilot)
@@ -2068,18 +1749,15 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                 })
                 .onHit((attacker, target) -> {
                     this.recordGrudge(target);
-                    // Push along the ray's own axis rather than radially away from the owl: a beam
-                    // shoves things down its length, and from above that includes driving them into
-                    // the ground (hence the smaller vertical term).
+                    // Push along the ray's axis, not radially: a beam shoves things down its length,
+                    // which from above means into the ground (hence the smaller vertical term).
                     double resist = 1.0 - target.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
-                    // NOT attacker.getViewVector() — same reason as the facing() override above,
-                    // and the same aim source so push and beam can never disagree.
+                    // Same aim source as facing(), so push and beam can never disagree.
                     Vec3 dir = this.sonicAimVector();
                     target.push(dir.x * SONIC_KNOCKBACK_H * resist,
                             dir.y * SONIC_KNOCKBACK_V * resist,
                             dir.z * SONIC_KNOCKBACK_H * resist);
-                    // Entity#push alone never reaches a player's client (their movement is
-                    // client-authoritative); hurtMarked is what forces the velocity to be sent.
+                    // Player movement is client-authoritative; hurtMarked forces the velocity out.
                     target.hurtMarked = true;
                 })
                 .applyTo(sonic);
@@ -2087,15 +1765,11 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         // Charge cue at the start of the windup, so the release is telegraphed rather than instant.
         sonic.onFrame(0, e -> e.playSound(SoundEvents.WARDEN_SONIC_CHARGE, 1.6F, 1.6F));
 
-        // No ground/takeoff/landing state anymore (always airborne — see tick()), so these two
-        // conditions fully cover the cruise pose: idle_fly while roughly stationary (holding
-        // position near the player or paused mid-orbit), fly_sprint while actually moving
-        // (chasing/orbiting/possessed flight). Both stand down while perched, so nothing plays and
-        // the model just sits at its bare rest pose on the owner's arm — by design (see AWAKE above).
-        // isScreeching() is in both conditions for the same reason isDiving() is: in this entity the
-        // exclusion between clips is done by play condition, NOT by layer priority (idle sits at
-        // priority 3 and the attacks at 0, and MobAnimator#play only stops animations at priority
-        // <= the incoming one — so idle would happily keep playing underneath the screech).
+        // Always airborne, so these two cover the whole cruise pose: idle_fly while stationary,
+        // fly_sprint while moving. Both stand down while perched, leaving the bare rest pose.
+        // The attacks are excluded by play condition rather than by layer priority: MobAnimator#play
+        // only stops animations at priority <= the incoming one, and idle sits at 3 while the attacks
+        // sit at 0, so idle would otherwise keep playing underneath them.
         idleFly.setPlayCondition(anim -> !this.isDiving() && !this.isScreeching()
                 && !this.isPerched() && !this.isFlyingMoving());
         flySprint.setPlayCondition(anim -> !this.isDiving() && !this.isScreeching()
@@ -2103,12 +1777,10 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         diveAttack.setPlayCondition(anim -> this.isDiving());
 
         this.animator.register(idleFly, flySprint, diveAttack, diveReturn, awake, sonic);
-        // Deliberately NOT gated with a play condition, unlike the arpy's death_falling. The arpy
-        // gates on isFlying() because it has two ground-death variants to select instead; the owl
-        // has only this one, so gating it would leave deaths on the ground with no animation at all.
-        // Ungated costs nothing: MobAnimator checks onGround() every tick, so an owl that dies
-        // already standing skips the fall stage on the next tick and goes straight to the impact —
-        // which reads as collapsing.
+        // Not gated on isFlying() the way the arpy's is: the arpy has ground-death variants to pick
+        // between, the owl only has this one, so gating would leave ground deaths unanimated.
+        // MobAnimator checks onGround() every tick anyway, so an owl that dies standing skips
+        // straight to the impact stage, which reads as collapsing.
         this.animator.registerFallingDeath(deathFalling, hitGround);
     }
 }

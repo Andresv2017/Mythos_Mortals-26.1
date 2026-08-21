@@ -14,14 +14,7 @@ import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
-/** The Copper Owl's real model — ported from a Blockbench export into this project's Rig/render-state
- * conventions (see {@link ArpyModel} for the same pattern). Bone names (top/tail/wing/head/eye/pupil/
- * brow/brow2/eye2/pupil2/wing2/leg/foot/leg2/foot2) match {@link OwlAnimation}'s clips exactly.
- *
- * <p>{@link #applyEyeTransform} and {@link #eyeScale} exist for {@link OwlEyeGlowLayer}, which draws
- * a camera-facing halo at each eye. They live here, not in the layer, because knowing that an eye
- * hangs off {@code owl → body → top → head} is the model's business: the layer asks to be put in eye
- * space and stays ignorant of the hierarchy's shape. */
+
 public class CopperOwlModel extends EntityModel<DeluxeEntityRenderState> {
 
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
@@ -43,10 +36,6 @@ public class CopperOwlModel extends EntityModel<DeluxeEntityRenderState> {
                             m -> m.eyePart(Eye.A), m -> m.eyePart(Eye.B))
                     .build();
 
-    /** Which eye a halo is being drawn for. Deliberately not a {@code boolean rightEye}: the bones
-     *  are named {@code eye} (at x=-2.1) and {@code eye2} (at x=+1.9), and nothing in the rig says
-     *  which is the anatomical left. A boolean called "right" would invite silently inverting it;
-     *  these map to the bones without inventing semantics the model does not have. */
     public enum Eye {
         A, B
     }
@@ -68,31 +57,9 @@ public class CopperOwlModel extends EntityModel<DeluxeEntityRenderState> {
         this.eye2 = this.head.getChild("eye2");
     }
 
-    /** Y offset from each eye bone's origin to the centre of its pupil, in model units.
-     *
-     *  <p>Taken straight off the rig: {@code pupil} hangs from {@code eye} at
-     *  {@code PartPose.offset(0, -0.5, -0.01)} and {@code pupil2} from {@code eye2} at
-     *  {@code offset(0, -0.25, -0.005)}, and both pupil boxes are {@code addBox(-0.5, -0.5, …)},
-     *  i.e. centred on their own bone. So the pupil's visual centre relative to the eye bone is just
-     *  that offset. ({@code -Y} is up in model space — the pupils sit high in the eye.)
-     *
-     *  <p>The two differ because the eyes are not authored symmetrically, so a single shared
-     *  constant would land off-centre on one of them. */
     private static final float EYE_A_PUPIL_Y = -0.5F;
     private static final float EYE_B_PUPIL_Y = -0.25F;
 
-    /**
-     * Walks {@code poseStack} from model space down to the centre of the given eye's pupil, applying
-     * every bone's current animated transform along the way.
-     *
-     * <p>Lands on the <em>pupil</em>, not the eye bone origin and not the eye box centre — see
-     * {@link #EYE_A_PUPIL_Y}. That is what reads as "the middle of the eye" to a viewer, so it is
-     * where anything drawn around the eye wants to be centred.
-     *
-     * <p>Callers must have pushed the stack themselves; this only multiplies into it. Safe to call
-     * from a {@code RenderLayer}: by then {@code setupAnim} has run, so the bones hold this frame's
-     * pose.
-     */
     public void applyEyeTransform(PoseStack poseStack, Eye which) {
         this.root().translateAndRotate(poseStack);
         this.owl.translateAndRotate(poseStack);
@@ -105,19 +72,10 @@ public class CopperOwlModel extends EntityModel<DeluxeEntityRenderState> {
         poseStack.translate(0.0F, pupilY / ModelPart.Vertex.SCALE_FACTOR, 0.0F);
     }
 
-    /**
-     * The eye bone's current vertical scale, which {@link OwlAnimation} drives to fake a blink.
-     *
-     * <p>The halo used to be a child bone and inherited this for free. It is generated geometry now,
-     * so the blink has to be read out and applied by hand — without this the eye shuts and the glow
-     * keeps burning.
-     */
     public float eyeScale(Eye which) {
         return eyePart(which).yScale;
     }
 
-    /** The eye bone itself. Public because the rig's blink component needs a selector for it; the
-     *  {@link Eye} enum stays the only way in, so callers still cannot confuse the two bones. */
     public ModelPart eyePart(Eye which) {
         return which == Eye.A ? this.eye : this.eye2;
     }

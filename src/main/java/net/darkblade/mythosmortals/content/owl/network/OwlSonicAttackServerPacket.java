@@ -10,16 +10,6 @@ import net.darkblade.mythosmortals.content.owl.OwlEntity;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Client → server: the piloting player clicked the mouse wheel. The server fires the owl's sonic
- * screech — see {@link OwlEntity#performSonicAttack}. Sibling of {@link OwlAttackServerPacket} (the
- * left-click dive); kept as its own packet rather than an attack-id field so each input stays one
- * explicit message, same as the rest of the possession packets.
- *
- * <p>No aim or target is sent: the owl already mirrors the pilot's look every tick (see
- * {@code PossessedInputServerPacket}), so the beam's own HitWindow resolves where it points server-side.
- * Accepted only from the actual controller.
- */
 @PacketSide(side = Side.SERVER)
 public final class OwlSonicAttackServerPacket extends AbstractNetworkPacket<OwlSonicAttackServerPacket> {
     private int owlId;

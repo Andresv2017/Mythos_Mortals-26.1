@@ -40,17 +40,10 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Minotaur mini-boss: Cortex FSM + MobAnimator wiring.
- *
- * <p>Half the repertoire has no keyframes yet. Those clips still run server-side (duration, hit
- * windows, sync) and are narrated by {@link MinotaurAnimDebug} instead of drawn.</p>
- */
 public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState> implements Animatable<MinotaurEntity> {
 
     private final MobAnimator<MinotaurEntity> animator;
 
-    /** Per-entity: remembers the previous state to detect transitions. */
     private final MinotaurAnimDebug debug = new MinotaurAnimDebug(this);
 
     public MinotaurEntity(EntityType<? extends MinotaurEntity> type, Level level) {
@@ -90,8 +83,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .add(Attributes.STEP_HEIGHT, 1.0);
     }
 
-    // --- riding (rider pose demo), gated behind MinotaurCtx.ENABLE_RIDING ---
-
     @Override
     public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
         if (MinotaurCtx.ENABLE_RIDING && !this.level().isClientSide() && !this.isVehicle()) {
@@ -101,11 +92,9 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return super.mobInteract(player, hand);
     }
 
-    /** The riding player drives movement/rotation (WASD), overriding the FSM's own locomotion. */
     @Override
     @Nullable
     public LivingEntity getControllingPassenger() {
-        // Also gated: /ride could still hand the controls over otherwise.
         return MinotaurCtx.ENABLE_RIDING && this.getFirstPassenger() instanceof Player player
                 ? player
                 : super.getControllingPassenger();
@@ -114,8 +103,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     @Override
     protected void tickRidden(@NotNull Player player, @NotNull Vec3 travelVector) {
         super.tickRidden(player, travelVector);
-        // Face where the rider looks — also keeps the rider's head within vanilla's ±85° passenger
-        // yaw clamp, so it no longer snaps at the extremes.
         this.setRot(player.getYRot(), player.getXRot() * 0.5F);
         this.yRotO = this.yBodyRot = this.yHeadRot = this.getYRot();
     }
@@ -125,7 +112,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         float strafe = player.xxa * 0.5F;
         float forward = player.zza;
         if (forward <= 0.0F) {
-            forward *= 0.25F; // backpedal slower than forward
+            forward *= 0.25F;
         }
         return new Vec3(strafe, 0.0, forward);
     }
@@ -207,12 +194,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .build();
     }
 
-    /**
-     * Attack selection for CHASE and COMBAT_IDLE. Returns null when nothing is viable and the
-     * caller decides (keep chasing, hold the guard, resume the chase).
-     *
-     * <p>Branches are ordered, not exclusive: the first one that passes wins.</p>
-     */
+
     @Nullable
     public MinotaurState pickAttack(BehaviorContext ctx) {
         final LivingEntity target = getTarget();
@@ -225,14 +207,12 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         final boolean chargeReady = MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
                 && now >= ctx.get(MinotaurCtx.NEXT_CHARGE_TIME);
 
-        // 1. Charge. The band has a ceiling as well as a floor — see CHARGE_MAX_RANGE.
         if (chargeReady
                 && distance >= MinotaurCtx.CHARGE_MIN_RANGE
                 && distance <= MinotaurCtx.CHARGE_MAX_RANGE) {
             return MinotaurState.CHARGE_WINDUP;
         }
 
-        // Out of every hitbox's reach: geometric limit, so it goes before the cooldown check.
         if (distance > MinotaurCtx.ATTACK_RANGE) {
             return null;
         }
@@ -241,22 +221,16 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
             return null;
         }
 
-        // 2. Charge ready but too close to launch it: the push IS the setup. No dice here —
-        //    PushBehavior rolls them once the gap is actually open.
         if (MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
                 && chargeReady && distance <= MinotaurCtx.PUSH_RANGE) {
             return MinotaurState.ATTACK_PUSH;
         }
 
-        // 3. Inside the axe's dead zone: the horizontal sector starts ahead of the mob and
-        //    cannot reach here, so the push is the only answer.
         if (MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
                 && distance <= MinotaurCtx.PUSH_CONTACT_RANGE) {
             return MinotaurState.ATTACK_PUSH;
         }
 
-        // 4. Vertical. Chosen closer than the horizontal even though it reaches further (~6.3
-        //    vs ~4.9): the extra reach comes from lunging, so it catches whoever backs off.
         if (MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
                 && distance <= MinotaurCtx.VERTICAL_RANGE
                 && getRandom().nextFloat() < MinotaurCtx.VERTICAL_CHANCE) {
@@ -273,7 +247,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return this.animator;
     }
 
-    /** Clip with no keyframes yet: full server behaviour, null supplier, flagged in the HUD. */
     private StandardAnimation sinKeyframes(String name, Loop loop, int priority, float duration) {
         this.debug.markMissing(name);
         return new StandardAnimation(name, new AnimSource(() -> null), loop, 0, priority, duration);
@@ -281,8 +254,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
 
     @Override
     public void registerAnimations() {
-        // TODO(Blockbench): everything going through sinKeyframes() still needs its export.
-
         // --- locomotion loops ---
         // A loop's duration must match the real clip length or the play-condition re-check
         // desyncs from the visual cycle.

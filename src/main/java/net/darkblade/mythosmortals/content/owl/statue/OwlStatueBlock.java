@@ -27,27 +27,13 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Decorative "Owl Statue" block. Right-clicking it while holding the Minotaur's
- * {@link MythosMortalsItems#GREEK_BRONZE_CORE} removes the block, spawns the living
- * {@link OwlEntity} companion in its place, and bonds it to the interacting player as its owner
- * (see {@link OwlEntity#bondTo}) — the statue block → companion entity transformation.
- *
- * <p>Extends {@link StatueBlock}, so it only contributes this wake-up behaviour — the base class
- * already covers the state definition, placement facing, block entity, and invisible render
- * shape. A dirt-textured placeholder cube was tried instead, but it just hid/enclosed the owl
- * model rather than reading as ground the owl stands on, so this went back to pure invisibility.
- */
+
 public class OwlStatueBlock extends StatueBlock {
-    /** Clave server-safe de esta estatua. Vive aquí (no en {@code StatueConfig}) porque el block
-     * entity la necesita en el servidor dedicado. */
+
     public static final StatueType OWL_TYPE =
             new StatueType(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "owl"));
 
     public OwlStatueBlock(BlockBehaviour.Properties properties) {
-        // El DeferredHolder ya es un Supplier diferido, así que se pasa tal cual: nada se resuelve
-        // hasta que newBlockEntity lo invoca, mucho después de este constructor (que corre durante el
-        // register event de bloques, cuando el block entity type todavía no está bound).
         super(properties, MythosMortalsRegistry.OWL_STATUE_BLOCK_ENTITY);
     }
 
@@ -66,16 +52,11 @@ public class OwlStatueBlock extends StatueBlock {
             return InteractionResult.PASS;
         }
 
-        // Carry the statue's own facing into the spawned owl's initial rotation, so waking it doesn't
-        // snap its facing to the default (south) — it keeps looking the way the statue already did.
         Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
         level.removeBlock(pos, false);
 
         OwlEntity owl = new OwlEntity(MythosMortalsRegistry.OWL.get(), level);
         owl.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
-        // setYRot alone isn't enough — rendering uses yBodyRot/yHeadRot (separately tracked/
-        // interpolated), which a fresh entity doesn't derive from yRot on its own. Same three-field
-        // sync OwlEntity's own PossessionGoal/PerchGoal already use for exactly this reason.
         float yaw = facing.toYRot();
         owl.setYRot(yaw);
         owl.yBodyRot = yaw;
@@ -90,18 +71,6 @@ public class OwlStatueBlock extends StatueBlock {
         return InteractionResult.SUCCESS;
     }
 
-    /**
-     * The copper burst that sells the statue cracking open into a living bird.
-     *
-     * <p>Copper block shards rather than a coloured dust: they are literally the texture the statue is
-     * made of, so the colour can never drift from whatever the model ends up using, and they read as
-     * material breaking apart instead of as a generic magic puff. Electric sparks on top because in
-     * vanilla that particle already belongs to copper (it is what lightning rods throw), so it reads
-     * as "the metal woke up" without inventing a new visual language.
-     *
-     * <p>Both use the default 32-block particle range — you are standing at arm's length from the
-     * block you just used, so the longer-distance flag would only be spending packets.
-     */
     private static void spawnAwakeningParticles(Level level, BlockPos pos) {
         if (!(level instanceof ServerLevel server)) {
             return;
