@@ -663,6 +663,15 @@ public final class MythosMortalsRegistry {
                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 PegasusEntity::checkPegasusSpawnRules,
                 RegisterSpawnPlacementsEvent.Operation.AND);
+
+            // The athenian has had a biome spawn entry since it was written, but no placement — the
+            // server logged an error about it the moment the spawn datagen started producing its
+            // biome modifier. Solid ground and nothing else, so this only silences the error rather
+            // than quietly imposing a darkness rule the mob never asked for.
+            event.register(ATHENIAN.get(), SpawnPlacementTypes.ON_GROUND,
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                (type, level, reason, pos, random) -> true,
+                RegisterSpawnPlacementsEvent.Operation.AND);
         }
 
         @SubscribeEvent
