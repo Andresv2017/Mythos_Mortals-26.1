@@ -1679,7 +1679,6 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
         // Sonic screech — triggered imperatively from performSonicAttack(). Length is
         // SONIC_TOTAL_TICKS in seconds: clip and counter must agree, or the clip is cut short (or the
         // owl hangs braked after it visually ends).
-        // TODO: swap in the owl's own SONIC_SCREECH clip once exported from Blockbench (bone names
         // must match CopperOwlModel's). DIVE_ATTACK is a stand-in so the mechanic is testable.
         StandardAnimation sonic = new StandardAnimation("sonic_screech",
                 new AnimSource(() -> OwlAnimation.DIVE_ATTACK), Loop.PLAY_ONCE, 0, 0, SONIC_TOTAL_TICKS / 20.0F);

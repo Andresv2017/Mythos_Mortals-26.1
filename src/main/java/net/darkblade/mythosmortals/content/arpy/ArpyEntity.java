@@ -15,6 +15,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -34,7 +35,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
 
-public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyEntity>, IArmoredEntity {
+public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyEntity>, IArmoredEntity, Enemy {
 
     private static final EntityDataAccessor<Boolean> DATA_IS_DIVING =
             SynchedEntityData.defineId(ArpyEntity.class, EntityDataSerializers.BOOLEAN);

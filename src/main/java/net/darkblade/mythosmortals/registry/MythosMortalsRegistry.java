@@ -8,6 +8,12 @@ import net.darkblade.deluxelib.client.render.HelmetInteriors;
 import net.darkblade.deluxelib.client.render.ShieldPoseNudges;
 import net.darkblade.deluxelib.client.render.ThrownWeaponRenderer;
 import net.darkblade.deluxelib.spawn.DeluxeBiomeSpawns;
+import net.darkblade.mythosmortals.content.pegasus.PegasusEntity;
+import net.darkblade.mythosmortals.content.pegasus.PegasusModel;
+import net.darkblade.mythosmortals.content.pegasus.PegasusRenderer;
+import net.darkblade.mythosmortals.content.pegasus.menu.PegasusInventoryMenu;
+import net.darkblade.mythosmortals.content.pegasus.menu.PegasusInventoryScreen;
+import net.darkblade.mythosmortals.content.pegasus.network.PegasusDashServerPacket;
 import net.darkblade.mythosmortals.content.amphora.FilledAmphoraBlock;
 import net.darkblade.mythosmortals.content.amphora.GreekAmphoraBlock;
 import net.darkblade.mythosmortals.content.amphora.MarinatingRecipe;
@@ -107,6 +113,12 @@ import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
+import net.minecraft.world.entity.SpawnPlacementTypes;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
@@ -162,6 +174,14 @@ public final class MythosMortalsRegistry {
                 .sized(1.4F, 3.2F)
                 .clientTrackingRange(10)
                 .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(MythosMortals.MODID, "minotaur")))
+        );
+
+    public static final DeferredHolder<EntityType<?>, EntityType<PegasusEntity>> PEGASUS =
+        ENTITY_TYPES.register("pegasus",
+            () -> EntityType.Builder.<PegasusEntity>of(PegasusEntity::new, MobCategory.CREATURE)
+                .sized(1.4F, 2.0F)
+                .clientTrackingRange(12)
+                .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(MythosMortals.MODID, "pegasus")))
         );
 
     public static final DeferredHolder<EntityType<?>, EntityType<ThrownDoriSpear>> THROWN_DORI_SPEAR =
@@ -559,6 +579,14 @@ public final class MythosMortalsRegistry {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StatueBlockEntity>> OWL_STATUE_BLOCK_ENTITY =
         StatueBlockEntity.registerType(BLOCK_ENTITY_TYPES, "owl_statue", OWL_STATUE::get, OwlStatueBlock.OWL_TYPE);
 
+    public static final DeferredRegister<MenuType<?>> MENU_TYPES =
+        DeferredRegister.create(Registries.MENU, MythosMortals.MODID);
+
+    /** Built through NeoForge's extension so the pegasus' entity id can ride along in the payload. */
+    public static final DeferredHolder<MenuType<?>, MenuType<PegasusInventoryMenu>> PEGASUS_MENU =
+        MENU_TYPES.register("pegasus_inventory",
+            () -> IMenuTypeExtension.create(PegasusInventoryMenu::new));
+
     public static final DeferredRegister<StructureType<?>> STRUCTURE_TYPES =
         DeferredRegister.create(Registries.STRUCTURE_TYPE, MythosMortals.MODID);
 
@@ -578,6 +606,7 @@ public final class MythosMortalsRegistry {
 
     public static void register(IEventBus bus) {
         ENTITY_TYPES.register(bus);
+        MENU_TYPES.register(bus);
         BLOCKS.register(bus);
         BLOCK_ENTITY_TYPES.register(bus);
         PARTICLE_TYPES.register(bus);
@@ -594,6 +623,14 @@ public final class MythosMortalsRegistry {
             .spawnRate(20, 1, 2)
             .biomes(Biomes.PLAINS)
             .submit();
+
+        // Rare and solitary, and only up where the air is thin — the spawn rule on top of this also
+        // demands open sky above Y 100, so it never turns up in a cave under a mountain.
+        DeluxeBiomeSpawns.builder(() -> PEGASUS.get(), MobCategory.CREATURE)
+            .spawnRate(5, 1, 1)
+            .biomes(Biomes.MEADOW, Biomes.GROVE, Biomes.JAGGED_PEAKS,
+                Biomes.STONY_PEAKS, Biomes.WINDSWEPT_HILLS)
+            .submit();
     }
 
 
@@ -602,6 +639,7 @@ public final class MythosMortalsRegistry {
         MythosMortals.NETWORK.regPacket(OwlSonicAttackServerPacket.class);
         MythosMortals.NETWORK.regPacket(OwlMarkServerPacket.class);
         MythosMortals.NETWORK.regPacket(OwlOrderAttackServerPacket.class);
+        MythosMortals.NETWORK.regPacket(PegasusDashServerPacket.class);
     }
 
     @EventBusSubscriber(modid = MythosMortals.MODID)
@@ -613,8 +651,19 @@ public final class MythosMortalsRegistry {
             event.put(SPARTAN.get(), SpartanEntity.createAttributes().build());
             event.put(MINOTAUR.get(), MinotaurEntity.createAttributes().build());
             event.put(OWL.get(), OwlEntity.createAttributes().build());
+            event.put(PEGASUS.get(), PegasusEntity.createAttributes().build());
         }
 
+
+        @SubscribeEvent
+        public static void onRegisterSpawnPlacements(RegisterSpawnPlacementsEvent event) {
+            // AND on top of the biome list: high ground with the sky overhead, so a pegasus never
+            // generates inside a cave system that happens to run under a mountain biome.
+            event.register(PEGASUS.get(), SpawnPlacementTypes.ON_GROUND,
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                PegasusEntity::checkPegasusSpawnRules,
+                RegisterSpawnPlacementsEvent.Operation.AND);
+        }
 
         @SubscribeEvent
         public static void onAddBlockEntityBlocks(BlockEntityTypeAddBlocksEvent event) {
@@ -666,6 +715,7 @@ public final class MythosMortalsRegistry {
             event.registerLayerDefinition(SpartanModel.LAYER_LOCATION, SpartanModel::createBodyLayer);
             event.registerLayerDefinition(MinotaurModel.LAYER_LOCATION, MinotaurModel::createBodyLayer);
             event.registerLayerDefinition(CopperOwlModel.LAYER_LOCATION, CopperOwlModel::createBodyLayer);
+            event.registerLayerDefinition(PegasusModel.LAYER_LOCATION, PegasusModel::createBodyLayer);
             event.registerLayerDefinition(AthenianHelmetInteriorModel.LAYER_LOCATION, AthenianHelmetInteriorModel::createLayer);
             event.registerLayerDefinition(SpartanHelmetInteriorModel.LAYER_LOCATION, SpartanHelmetInteriorModel::createLayer);
             event.registerLayerDefinition(DoriSpearProjectileModel.LAYER_LOCATION, DoriSpearProjectileModel::createLayer);
@@ -679,12 +729,18 @@ public final class MythosMortalsRegistry {
         }
 
         @SubscribeEvent
+        public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
+            event.register(PEGASUS_MENU.get(), PegasusInventoryScreen::new);
+        }
+
+        @SubscribeEvent
         public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ATHENIAN.get(), AthenianRenderer::new);
             event.registerEntityRenderer(ARPY.get(), ArpyRenderer::new);
             event.registerEntityRenderer(SPARTAN.get(), SpartanRenderer::new);
             event.registerEntityRenderer(MINOTAUR.get(), MinotaurRenderer::new);
             event.registerEntityRenderer(OWL.get(), OwlRenderer::new);
+            event.registerEntityRenderer(PEGASUS.get(), PegasusRenderer::new);
             event.registerEntityRenderer(THROWN_DORI_SPEAR.get(),
                 ctx -> new ThrownWeaponRenderer<>(ctx, DoriSpearProjectileModel.LAYER_LOCATION, DORI_SPEAR_TEXTURE));
             event.registerBlockEntityRenderer(OWL_STATUE_BLOCK_ENTITY.get(), StatueRenderer::new);

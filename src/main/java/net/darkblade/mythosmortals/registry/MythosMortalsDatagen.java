@@ -103,6 +103,9 @@ public final class MythosMortalsDatagen {
             add("mythosmortals.configuration.magicNumberIntroduction", "Magic Number Text");
             add("mythosmortals.configuration.magicNumber", "Magic Number");
 
+            add("key.mythosmortals.pegasus_dash", "Wind Surge (Pegasus)");
+            add("pegasus.mythosmortals.not_your_mount", "This pegasus answers to someone else.");
+
             bannerPatternNames("athena", "Owl of Athena");
             bannerPatternNames("centaur", "Centaur");
             bannerPatternNames("sparta", "Lambda");
@@ -152,6 +155,13 @@ public final class MythosMortalsDatagen {
                     .add(LootItem.lootTableItem(Items.BONE)
                         .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
                     .when(LootItemRandomChanceCondition.randomChance(0.5f))));
+
+            add(MythosMortalsRegistry.ARPY.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                    .setRolls(ConstantValue.exactly(1))
+                    .add(LootItem.lootTableItem(MythosMortalsItems.ARPY_FEATHER.get())
+                        .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
+                    .when(LootItemRandomChanceCondition.randomChance(0.6f))));
 
             add(MythosMortalsRegistry.MINOTAUR.get(), LootTable.lootTable()
                 .withPool(LootPool.lootPool()
