@@ -12,7 +12,8 @@ import net.minecraft.client.animation.KeyframeAnimations;
  * to the real {@code HumanoidModel} by {@code HumanoidPoseApplier} from {@link PegasusRenderer}.
  *
  * <p>To change it, pose the rig in Blockbench, re-export, and replace the definition below — or nudge
- * it live in-game with {@code /riderpose} and paste the printed values here.
+ * it live in-game with {@code /deluxelib debug riderpose mythosmortals:pegasus} and paste the printed
+ * values here.
  */
 public final class PegasusRiderPose {
 

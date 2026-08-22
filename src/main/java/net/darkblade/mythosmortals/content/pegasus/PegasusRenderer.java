@@ -69,11 +69,12 @@ public class PegasusRenderer extends FlyingMobRenderer<PegasusEntity, PegasusMod
     @Override
     public void applyRiderTransform(@NotNull LivingEntityRenderState vehicleState, @NotNull PoseStack poseStack) {
         // Walk down the rig to the barrel, which puts the rider's origin over the saddle. Fine-tune
-        // live with /riderpose (numpad) and paste the printed offset here. +Y is DOWN, +Z is tailward.
+        // live with "/deluxelib debug riderpose mythosmortals:pegasus" (numpad) and paste the printed
+        // offset here. +Y is DOWN, +Z is tailward.
         PegasusModel model = this.getModel();
         model.pegasus.translateAndRotate(poseStack);
         model.body.translateAndRotate(poseStack);
         model.top.translateAndRotate(poseStack);
-        poseStack.translate(0.0F, -0.400F, 0.200F);
+        poseStack.translate(0.000F, -1.450F, 0.300F);
     }
 }

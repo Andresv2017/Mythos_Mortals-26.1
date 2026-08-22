@@ -73,19 +73,54 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             SynchedEntityData.defineId(PegasusEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> DATA_DASH_COOLDOWN =
             SynchedEntityData.defineId(PegasusEntity.class, EntityDataSerializers.INT);
+    /**
+     * Horizontal blocks travelled per tick, measured and synced by us.
+     *
+     * <p>{@code isGroundMoving()} and {@code isFlyingMoving()} in the base class derive their answer
+     * from {@code getDeltaMovement()} on the server — but a mount driven by its rider is moved by
+     * position packets from that client, so the server's delta stays near zero and every gait
+     * animation would sit in idle forever. Measuring how far the entity actually got is true
+     * regardless of which side did the moving.
+     */
+    private static final EntityDataAccessor<Float> DATA_TRAVEL_SPEED =
+            SynchedEntityData.defineId(PegasusEntity.class, EntityDataSerializers.FLOAT);
 
-    /** Height gained before a fleeing pegasus is considered gone for good. */
-    private static final double ESCAPE_ALTITUDE = 40.0;
-    private static final double ESCAPE_CLIMB_SPEED = 0.55;
-    /** How often the bucking flight picks a new erratic destination. */
-    private static final int BUCK_RETARGET_MIN = 20;
-    private static final int BUCK_RETARGET_MAX = 30;
-    private static final double BUCK_RADIUS = 12.0;
+    /** Horizontal distance covered before a fleeing pegasus is considered gone for good. */
+    private static final double ESCAPE_DISTANCE = 96.0;
+    /** Forward speed of the escape. It leaves toward the horizon, not straight up. */
+    private static final double ESCAPE_FORWARD_SPEED = 0.90;
+    /** Climb blended into the escape, so it recedes into the sky rather than along the ground. */
+    private static final double ESCAPE_CLIMB_SPEED = 0.30;
+    /** Safety net: never let an escape run forever if something blocks the path. */
+    private static final int ESCAPE_MAX_TICKS = 400;
+    /** Ticks per bucking stroke. Long enough that each one crosses real ground. */
+    private static final int BUCK_STROKE_MIN = 25;
+    private static final int BUCK_STROKE_MAX = 45;
+    /** Thrust along the current stroke, and the speed it saturates at. */
+    private static final double BUCK_SURGE = 0.28;
+    private static final double BUCK_MAX_SPEED = 1.4;
+    /** Altitude band the buck stays inside, so it neither ploughs the ground nor leaves the world. */
+    private static final double BUCK_MIN_ALTITUDE = 12.0;
+    private static final double BUCK_MAX_ALTITUDE = 45.0;
+    /**
+     * Hard ceiling on the whole air phase. Whatever else happens — a stalled climb, a phase that
+     * fails to advance — the rider is bridled or on the floor within this many ticks of leaving
+     * the ground. Nothing about the ritual is allowed to strand someone in the sky.
+     */
+    private static final int AIR_PHASE_MAX_TICKS = 500;
+    /** How long the newly bridled pegasus hangs in the air catching its breath. */
+    private static final int SETTLE_HOVER_TICKS = 100;
+    /** Safety net on the way down, in case the descent cannot find ground. */
+    private static final int SETTLE_DESCENT_MAX_TICKS = 200;
     /** Minimum height the ritual climbs to, so the throw-off is a real fall. */
     private static final double BUCK_ALTITUDE = 14.0;
     private static final double BONDED_CLIMB_SPEED = 0.35;
     /** Length of the authored take_off animation, in ticks. */
     private static final int TAKEOFF_TICKS = 16;
+
+    /** Gait thresholds, in horizontal blocks per tick. */
+    private static final float WALK_SPEED = 0.015F;
+    private static final float FLY_MOVE_SPEED = 0.08F;
 
     private final MobAnimator<PegasusEntity> animator = new MobAnimator<>(this);
     private final PegasusTaming taming = new PegasusTaming();
@@ -93,10 +128,29 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
 
     /** Set while climbing away from the player for good; ends in {@code discard()}. */
     private boolean escaping;
-    private double escapeStartY;
+    private Vec3 escapeOrigin = Vec3.ZERO;
+    private Vec3 escapeHeading = Vec3.ZERO;
+    private int escapeTicks;
 
     private int buckRetargetTimer;
-    private Vec3 buckTarget = Vec3.ZERO;
+    private Vec3 buckHeading = Vec3.ZERO;
+    private double buckVertical;
+    /** Absolute tick by which the air phase must be over, one way or the other. */
+    private int airPhaseDeadline;
+
+    /**
+     * What the pegasus does with itself in the moments after the bridle goes on: it hovers, then
+     * carries the rider down and lets them off. Purely a server-side script, and one the rider can
+     * cut short at any point by fitting the saddle — see {@link #tickSettling()}.
+     */
+    private enum Settling { NONE, HOVER, DESCEND }
+
+    private Settling settling = Settling.NONE;
+    private int settlingTicks;
+
+    private double lastTickX;
+    private double lastTickZ;
+    private boolean hasLastTickPosition;
     /** Counts out the takeoff phase when the goal that normally would is standing down. */
     private int phaseTicks;
 
@@ -123,6 +177,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         builder.define(DATA_TAME_STATE, PegasusTameState.WILD.ordinal());
         builder.define(DATA_HAS_BRIDLE, false);
         builder.define(DATA_DASH_COOLDOWN, 0);
+        builder.define(DATA_TRAVEL_SPEED, 0.0F);
     }
 
     @Override
@@ -182,6 +237,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         return this.equipment;
     }
 
+    /** Server-side authority for permissions. Never consult it from rendering or control code. */
     public boolean isOwnedBy(Player player) {
         return this.taming.isOwnedBy(player.getUUID());
     }
@@ -191,16 +247,28 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     // -----------------------------------------------------------------------
 
     @Override
-    protected double getMinFlightAltitude() { return 12.0; }
+    protected double getMinFlightAltitude() { return 6.0; }
 
     @Override
-    protected double getMaxFlightAltitude() { return 45.0; }
+    protected double getMaxFlightAltitude() { return 18.0; }
 
     @Override
-    protected double getWanderHorizontalRadius() { return 28.0; }
+    protected double getWanderHorizontalRadius() { return 20.0; }
 
+    /** Short hops: a wild pegasus grazes far more than it soars. */
     @Override
-    protected int computeMaxFlightTicks() { return 300 + this.random.nextInt(240); }
+    protected int computeMaxFlightTicks() { return 120 + this.random.nextInt(120); }
+
+    /** And it stays down a long while between them. */
+    @Override
+    protected int computeGroundRestTicks() { return 600 + this.random.nextInt(600); }
+
+    /**
+     * A tamed pegasus never takes off on its own — left standing, it stays where its owner parked
+     * it. Only the rider's own take-off command, or the taming ritual, puts it in the air.
+     */
+    @Override
+    protected boolean shouldStayGrounded() { return this.isTamed(); }
 
     @Override
     protected double getTakeoffLiftSpeed() { return 0.14; }
@@ -264,6 +332,8 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
      */
     private class BoltFromPlayerGoal extends Goal {
 
+        private @Nullable Player intruder;
+
         BoltFromPlayerGoal() {
             setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
         }
@@ -273,13 +343,18 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             if (escaping || tameState() != PegasusTameState.WILD) {
                 return false;
             }
-            Player intruder = level().getNearestPlayer(PegasusEntity.this, PegasusTaming.FLEE_RADIUS);
-            return intruder != null && !intruder.isCrouching() && !intruder.isSpectator();
+            this.intruder = level().getNearestPlayer(PegasusEntity.this, PegasusTaming.FLEE_RADIUS);
+            // Creative players are ruled out alongside spectators: they are building or testing, not
+            // hunting, and a mob that vanishes the moment you summon it cannot be worked on.
+            return this.intruder != null
+                    && !this.intruder.isCrouching()
+                    && !this.intruder.isSpectator()
+                    && !this.intruder.getAbilities().instabuild;
         }
 
         @Override
         public void start() {
-            beginEscape();
+            beginEscape(this.intruder);
         }
     }
 
@@ -292,6 +367,13 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         super.aiStep();
         if (this.level().isClientSide()) {
             return;
+        }
+
+        this.updateTravelSpeed();
+
+        // Nobody is asking for speed unless a rider holds sprint, it is bolting, or it is bucking.
+        if (!this.isVehicle() && !this.escaping && this.isSprinting()) {
+            this.setSprinting(false);
         }
 
         int cooldown = this.entityData.get(DATA_DASH_COOLDOWN);
@@ -310,8 +392,22 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             }
         }
 
+        // Flying into the ground counts as landing. Without this the rider could only end a flight
+        // by holding shift on the way down, and otherwise carried on "flying" while scraping the
+        // floor — grounded animations and walking never came back until they remounted.
+        if (this.isFlying() && !this.isTakingOff() && !this.isLanding() && this.isVehicle()
+                && !this.taming.state().isAirborneRitual()
+                && (this.onGround() || this.verticalCollision)) {
+            this.beginLanding();
+        }
+
         if (this.escaping) {
             this.tickEscape();
+            return;
+        }
+
+        if (this.taming.state().isAirborneRitual() && this.tickCount >= this.airPhaseDeadline) {
+            this.throwRider();
             return;
         }
 
@@ -321,6 +417,38 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             case BUCKING -> this.tickBucking();
             default -> { }
         }
+
+        if (this.settling != Settling.NONE) {
+            this.tickSettling();
+        }
+    }
+
+    /**
+     * Records how far the pegasus actually moved last tick. {@code super.aiStep()} has already run
+     * the travel step by the time this is called, so the difference covers a whole tick of motion.
+     */
+    private void updateTravelSpeed() {
+        double dx = this.getX() - this.lastTickX;
+        double dz = this.getZ() - this.lastTickZ;
+        this.lastTickX = this.getX();
+        this.lastTickZ = this.getZ();
+        if (!this.hasLastTickPosition) {
+            this.hasLastTickPosition = true;
+            return;
+        }
+
+        float instant = (float) Math.sqrt(dx * dx + dz * dz);
+        float previous = this.entityData.get(DATA_TRAVEL_SPEED);
+        // Quick to pick up, slower to fall away, so a gait never flickers on a single stuttered tick.
+        float smoothed = previous + (instant - previous) * (instant > previous ? 0.5F : 0.2F);
+        if (Math.abs(smoothed - previous) > 1.0E-4F) {
+            this.entityData.set(DATA_TRAVEL_SPEED, smoothed);
+        }
+    }
+
+    /** Horizontal speed in blocks per tick, agreed on by both sides. */
+    public float travelSpeed() {
+        return this.entityData.get(DATA_TRAVEL_SPEED);
     }
 
     /** Lift, then close the takeoff once the authored take_off animation has had its 0.75 s. */
@@ -346,25 +474,52 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         }
     }
 
-    /** Straight up and gone. Flying entities take no fall damage, so nothing catches it on the way. */
+    /**
+     * A climbing departure toward the horizon: it holds the heading it picked when startled and
+     * gains height as it goes, so it shrinks into the distance instead of rocketing out of sight.
+     * Flying entities take no fall damage, so nothing catches it on the way.
+     */
     private void tickEscape() {
-        this.setDeltaMovement(this.getDeltaMovement().x * 0.8, ESCAPE_CLIMB_SPEED, this.getDeltaMovement().z * 0.8);
+        this.setDeltaMovement(
+                this.escapeHeading.x * ESCAPE_FORWARD_SPEED,
+                ESCAPE_CLIMB_SPEED,
+                this.escapeHeading.z * ESCAPE_FORWARD_SPEED);
         this.hurtMarked = true;
-        if (this.getY() - this.escapeStartY >= ESCAPE_ALTITUDE) {
+
+        // Face where it is going; the renderer's banking tilt follows from the movement itself.
+        this.setYRot((float) (Mth.atan2(this.escapeHeading.z, this.escapeHeading.x) * (180.0 / Math.PI)) - 90.0F);
+        this.yBodyRot = this.yHeadRot = this.getYRot();
+
+        double travelled = this.position().subtract(this.escapeOrigin).horizontalDistance();
+        if (travelled >= ESCAPE_DISTANCE || ++this.escapeTicks >= ESCAPE_MAX_TICKS) {
             this.discard();
         }
     }
 
-    private void beginEscape() {
+    private void beginEscape(@Nullable Player intruder) {
         this.escaping = true;
-        this.escapeStartY = this.getY();
+        this.escapeOrigin = this.position();
+        this.escapeHeading = pickEscapeHeading(intruder);
+        this.escapeTicks = 0;
         this.phaseTicks = 0;
         this.getNavigation().stop();
         if (!this.isFlying()) {
             this.beginTakeoff();
         }
+        this.setSprinting(true);
         this.playSound(SoundEvents.HORSE_ANGRY, 1.0F, 1.2F);
         this.animator.play(this.animator.getByName("tame_fail"));
+    }
+
+    /** Directly away from whoever startled it; a random bearing when nothing in particular did. */
+    private Vec3 pickEscapeHeading(@Nullable Player intruder) {
+        Vec3 away = intruder == null ? Vec3.ZERO : this.position().subtract(intruder.position());
+        Vec3 flat = new Vec3(away.x, 0.0, away.z);
+        if (flat.lengthSqr() < 1.0E-4) {
+            double angle = this.random.nextDouble() * Math.PI * 2.0;
+            flat = new Vec3(Math.cos(angle), 0.0, Math.sin(angle));
+        }
+        return flat.normalize();
     }
 
     private void tickFeeding() {
@@ -378,7 +533,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
                     && hasApple(feeder);
         }
         if (this.taming.tickFeeding(committed)) {
-            this.beginEscape();
+            this.beginEscape(feederId == null ? null : this.level().getPlayerByUUID(feederId));
         }
     }
 
@@ -387,10 +542,17 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
      * actually be a fall worth fearing. Only then does the bucking proper start.
      */
     private void tickBonded() {
+        if (!(this.getFirstPassenger() instanceof Player)) {
+            this.throwRider();
+            return;
+        }
         if (this.isTakingOff() || !this.isFlying()) {
             return;
         }
-        if (this.getY() - this.groundHeight() < BUCK_ALTITUDE) {
+        // Climb to a height worth fearing — but hand over to the buck on schedule regardless, so a
+        // ceiling or an awkward heightmap can never swallow the fifteen seconds that matter.
+        boolean climbTimeLeft = this.tickCount < this.airPhaseDeadline - PegasusTaming.BUCKING_TICKS;
+        if (this.getY() - this.groundHeight() < BUCK_ALTITUDE && climbTimeLeft) {
             Vec3 motion = this.getDeltaMovement();
             this.setDeltaMovement(motion.x * 0.9, BONDED_CLIMB_SPEED, motion.z * 0.9);
             this.hurtMarked = true;
@@ -398,6 +560,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         }
         this.taming.beginBucking();
         this.buckRetargetTimer = 0;
+        this.buckHeading = Vec3.ZERO;
         this.syncState();
     }
 
@@ -406,6 +569,12 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     }
 
     private void tickBucking() {
+        // Belt and braces for the dismount lock: however the rider came off — died, logged out, was
+        // teleported away — the ritual ends rather than carrying on riderless.
+        if (!(this.getFirstPassenger() instanceof Player)) {
+            this.throwRider();
+            return;
+        }
         this.driveBucking();
 
         if (this.tickCount % 10 == 0 && this.getFirstPassenger() instanceof ServerPlayer rider) {
@@ -420,35 +589,130 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         }
     }
 
-    /** Erratic flight: a fresh destination every second or so, with no regard for the rider. */
+    /**
+     * The buck: long, committed surges that swerve hard at the end of each one, with the nose
+     * pitching up and plunging between them. Chasing a nearby point instead produced a twitchy
+     * hover — the pegasus reached the target in a few ticks and then jittered around it.
+     */
     private void driveBucking() {
+        this.setSprinting(true);
         if (--this.buckRetargetTimer <= 0) {
-            this.buckRetargetTimer = BUCK_RETARGET_MIN + this.random.nextInt(BUCK_RETARGET_MAX - BUCK_RETARGET_MIN);
-            double groundY = this.groundHeight();
-            this.buckTarget = new Vec3(
-                    this.getX() + (this.random.nextDouble() - 0.5) * 2.0 * BUCK_RADIUS,
-                    groundY + BUCK_ALTITUDE + this.random.nextDouble() * 8.0,
-                    this.getZ() + (this.random.nextDouble() - 0.5) * 2.0 * BUCK_RADIUS);
-            this.playSound(SoundEvents.HORSE_ANGRY, 0.8F, 1.0F + this.random.nextFloat() * 0.3F);
+            this.buckRetargetTimer = BUCK_STROKE_MIN + this.random.nextInt(BUCK_STROKE_MAX - BUCK_STROKE_MIN);
+            this.buckHeading = swerve(this.buckHeading);
+            // Alternating rear-up and plunge is what sells it as an animal trying to shed you.
+            this.buckVertical = (this.random.nextBoolean() ? 1.0 : -1.0) * (0.55 + this.random.nextDouble() * 0.35);
+            this.playSound(SoundEvents.HORSE_ANGRY, 0.9F, 1.0F + this.random.nextFloat() * 0.3F);
         }
 
-        Vec3 toTarget = this.buckTarget.subtract(this.position());
-        if (toTarget.lengthSqr() > 1.0E-4) {
-            Vec3 push = toTarget.normalize().scale(0.35);
-            this.setDeltaMovement(this.getDeltaMovement().scale(0.85).add(push));
-            this.hurtMarked = true;
-            this.setYRot((float) (Mth.atan2(push.z, push.x) * (180.0 / Math.PI)) - 90.0F);
-            this.yBodyRot = this.getYRot();
+        double altitude = this.getY() - this.groundHeight();
+        double vertical = this.buckVertical;
+        if (altitude < BUCK_MIN_ALTITUDE) {
+            vertical = Math.abs(vertical);
+        } else if (altitude > BUCK_MAX_ALTITUDE) {
+            vertical = -Math.abs(vertical);
         }
+
+        Vec3 motion = this.getDeltaMovement().scale(0.88)
+                .add(this.buckHeading.scale(BUCK_SURGE))
+                .add(0.0, vertical * 0.25, 0.0);
+        if (motion.length() > BUCK_MAX_SPEED) {
+            motion = motion.normalize().scale(BUCK_MAX_SPEED);
+        }
+        this.setDeltaMovement(motion);
+        this.hurtMarked = true;
+
+        this.setYRot((float) (Mth.atan2(this.buckHeading.z, this.buckHeading.x) * (180.0 / Math.PI)) - 90.0F);
+        this.yBodyRot = this.yHeadRot = this.getYRot();
+    }
+
+    /** A new heading 90° to 210° off the old one — a wrench, not a drift. */
+    private Vec3 swerve(Vec3 current) {
+        Vec3 base = current.lengthSqr() < 1.0E-4
+                ? new Vec3(this.random.nextDouble() * 2.0 - 1.0, 0.0, this.random.nextDouble() * 2.0 - 1.0)
+                : current;
+        if (base.lengthSqr() < 1.0E-4) {
+            base = new Vec3(1.0, 0.0, 0.0);
+        }
+        base = base.normalize();
+        double turn = Math.toRadians(90.0 + this.random.nextDouble() * 120.0) * (this.random.nextBoolean() ? 1.0 : -1.0);
+        double cos = Math.cos(turn);
+        double sin = Math.sin(turn);
+        return new Vec3(base.x * cos - base.z * sin, 0.0, base.x * sin + base.z * cos).normalize();
+    }
+
+    /**
+     * The calm after the bridle: it hovers a moment, then flies the rider down and sets them on
+     * their feet.
+     *
+     * <p>Fitting the saddle at any point during this cancels the whole thing. That is the intended
+     * shortcut, not an escape hatch — a saddled pegasus already answers to its rider through
+     * {@link #getControllingPassenger()}, so the script simply gets out of the way.
+     */
+    private void tickSettling() {
+        if (this.isSaddled()) {
+            this.handOverControls();
+            return;
+        }
+        if (!(this.getFirstPassenger() instanceof Player)) {
+            this.settling = Settling.NONE;
+            return;
+        }
+
+        switch (this.settling) {
+            case HOVER -> {
+                Vec3 motion = this.getDeltaMovement();
+                this.setDeltaMovement(motion.x * 0.80, motion.y * 0.60, motion.z * 0.80);
+                this.hurtMarked = true;
+                if (++this.settlingTicks >= SETTLE_HOVER_TICKS) {
+                    this.settlingTicks = 0;
+                    this.settling = Settling.DESCEND;
+                    if (this.isFlying() && !this.isLanding()) {
+                        this.beginLanding();
+                    }
+                }
+            }
+            case DESCEND -> {
+                // sustainLanding() flies it down; this only waits for the touchdown.
+                if (!this.isFlying() || ++this.settlingTicks >= SETTLE_DESCENT_MAX_TICKS) {
+                    this.settling = Settling.NONE;
+                    this.settlingTicks = 0;
+                    this.ejectPassengers();
+                }
+            }
+            default -> this.settling = Settling.NONE;
+        }
+    }
+
+    /** The rider fitted the saddle mid-descent: abort the script and give them the aircraft. */
+    private void handOverControls() {
+        this.settling = Settling.NONE;
+        this.settlingTicks = 0;
+        if (this.isLanding() && this.isFlying()) {
+            // Drop out of the scripted approach; the rider owns the descent from here.
+            this.setLanding(false);
+        }
+    }
+
+    /**
+     * Puts the saddle on from the back of the pegasus. Same reasoning as the bridle: a rider cannot
+     * reliably click the animal they are sitting on, so {@link PegasusRiderEvents} routes it here.
+     */
+    void fitSaddle(Player player, ItemStack saddle) {
+        this.setItemSlot(EquipmentSlot.SADDLE, saddle.split(1));
+        this.playSound(SoundEvents.HORSE_SADDLE.value(), 0.9F, 1.0F);
+        this.handOverControls();
     }
 
     /** The window closed. Down goes the rider, and the pegasus is wild again — but still here. */
     private void throwRider() {
-        this.ejectPassengers();
-        this.playSound(SoundEvents.HORSE_ANGRY, 1.2F, 0.8F);
+        // Order matters: the ritual holds the rider in the saddle (see PegasusRiderEvents), so the
+        // state has to be released before the eject, or our own dismount gets cancelled.
         this.taming.reset();
         this.syncState();
-        this.buckTarget = Vec3.ZERO;
+        this.ejectPassengers();
+        this.playSound(SoundEvents.HORSE_ANGRY, 1.2F, 0.8F);
+        this.setSprinting(false);
+        this.buckHeading = Vec3.ZERO;
         this.buckRetargetTimer = 0;
         // Left airborne and wild: the base landing goal takes it down from here.
         if (this.isFlying()) {
@@ -480,9 +744,10 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     @Override
     protected @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
+        PegasusTameState state = this.tameState();
 
         // Fitting the bridle mid-buck is the whole point of the air phase: it always works.
-        if (this.tameState() == PegasusTameState.BUCKING
+        if (state == PegasusTameState.BUCKING
                 && held.is(MythosMortalsItems.ATHENA_BRIDLE.get())
                 && player == this.getFirstPassenger()) {
             if (!this.level().isClientSide()) {
@@ -491,16 +756,17 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             return InteractionResult.SUCCESS;
         }
 
-        if (this.tameState().isTaming()) {
+        // Once airborne the ritual owns the pegasus; nothing but the bridle above gets through.
+        if (state.isAirborneRitual()) {
             return InteractionResult.PASS;
         }
 
-        if (this.isTamed()) {
+        if (state == PegasusTameState.TAMED) {
             return this.interactTamed(player, hand, held);
         }
 
-        // Wild: only a crouching player holding an apple gets anywhere.
-        if (player.isCrouching() && isApple(held)) {
+        // Wild or already being fed: a crouching player holding an apple keeps the ritual going.
+        if (state.acceptsApples() && player.isCrouching() && isApple(held)) {
             if (!this.level().isClientSide()) {
                 this.feed(player, held);
             }
@@ -574,6 +840,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     private void beginAirPhase(Player player) {
         this.taming.beginBonding();
         this.phaseTicks = 0;
+        this.airPhaseDeadline = this.tickCount + AIR_PHASE_MAX_TICKS;
         this.syncState();
         player.startRiding(this, true, true);
         this.getNavigation().stop();
@@ -585,13 +852,15 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
 
     /**
      * Fits the bridle and ends the ritual. Called both from {@code mobInteract} and from
-     * {@link PegasusBridleEvents}, since a rider cannot reliably click the mount beneath them.
+     * {@link PegasusRiderEvents}, since a rider cannot reliably click the mount beneath them.
      * Server-side only, and always succeeds — that certainty is the point of the bridle.
      */
     void fitBridle(Player player, ItemStack bridle) {
         this.equipment.setItem(PegasusEquipment.BRIDLE_SLOT, bridle.split(1));
         this.taming.complete(player.getUUID());
         this.setPersistenceRequired();
+        this.settling = Settling.HOVER;
+        this.settlingTicks = 0;
         this.syncState();
         this.playSound(SoundEvents.HORSE_SADDLE.value(), 1.0F, 1.0F);
         if (this.level() instanceof ServerLevel server) {
@@ -615,14 +884,17 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     // Riding & flight control
     // -----------------------------------------------------------------------
 
+    /**
+     * Deliberately null during the ritual: the rider is aboard but has no say until the bridle is
+     * on. Afterwards it takes a saddle to steer and a bridle to leave the ground.
+     *
+     * <p>Every term here reads synced state, exactly as vanilla mounts do. Ownership is checked when
+     * mounting, not here — the owner UUID lives only on the server, so consulting it would make this
+     * method answer differently on each side and the client would never take the controls.
+     */
     @Override
     public @Nullable LivingEntity getControllingPassenger() {
-        // Deliberately null during the ritual: the rider is aboard but has no say until the bridle
-        // is on. Afterwards it takes a saddle to steer and a bridle to leave the ground.
-        if (this.isTamed()
-                && this.isSaddled()
-                && this.getFirstPassenger() instanceof Player player
-                && this.isOwnedBy(player)) {
+        if (this.isTamed() && this.isSaddled() && this.getFirstPassenger() instanceof Player player) {
             return player;
         }
         return super.getControllingPassenger();
@@ -639,6 +911,9 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             return;
         }
         var input = PegasusFlightController.riderInput(player);
+        // Synced through the vanilla shared flags, which is what the second-gear animations read.
+        this.setSprinting(input.sprint() && input.forward());
+
         if (!this.isFlying() && !this.isTakingOff() && input.jump() && this.hasBridle()) {
             this.beginTakeoff();
         } else if (this.isFlying() && !this.isLanding() && input.shift() && this.isNearGround()) {
@@ -709,7 +984,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         boolean hurt = super.hurtServer(level, source, amount);
         // Being struck is one more reason to leave. It never fights back.
         if (hurt && !this.escaping && this.tameState() == PegasusTameState.WILD && this.isAlive()) {
-            this.beginEscape();
+            this.beginEscape(source.getEntity() instanceof Player attacker ? attacker : null);
         }
         return hurt;
     }
@@ -795,32 +1070,27 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         // The fall→impact cut is the impact; a long crossfade softens it away.
         hitGround.blendInMs(100);
 
-        idle.setPlayCondition(anim -> !this.isFlying() && !this.isGroundMoving());
-        walk.setPlayCondition(anim -> !this.isFlying() && this.isGroundMoving() && !this.isSprintingOnGround());
-        sprint.setPlayCondition(anim -> !this.isFlying() && this.isGroundMoving() && this.isSprintingOnGround());
+        // Both gait families are picked from the measured travel speed, and the second gear is the
+        // rider's own sprint key rather than a speed threshold — so the change of animation lines up
+        // with the change of control instead of trailing behind it.
+        idle.setPlayCondition(anim -> !this.isFlying() && this.travelSpeed() < WALK_SPEED);
+        walk.setPlayCondition(anim ->
+                !this.isFlying() && this.travelSpeed() >= WALK_SPEED && !this.isSprinting());
+        sprint.setPlayCondition(anim ->
+                !this.isFlying() && this.travelSpeed() >= WALK_SPEED && this.isSprinting());
 
         flyIdle.setPlayCondition(anim ->
-                this.isFlying() && !this.isTakingOff() && !this.isFlyingMoving());
+                this.isFlying() && !this.isTakingOff() && this.travelSpeed() < FLY_MOVE_SPEED);
         fly.setPlayCondition(anim ->
                 this.isFlying() && !this.isTakingOff() && !this.isLanding()
-                        && this.isFlyingMoving() && !this.isFastFlight());
+                        && this.travelSpeed() >= FLY_MOVE_SPEED && !this.isSprinting());
         flySprint.setPlayCondition(anim ->
                 this.isFlying() && !this.isTakingOff() && !this.isLanding()
-                        && this.isFlyingMoving() && this.isFastFlight());
+                        && this.travelSpeed() >= FLY_MOVE_SPEED && this.isSprinting());
 
         this.animator.register(idle, walk, sprint, takeOff, flyIdle, fly, flySprint, landing, tameFail);
         this.animator.registerDeath(death);
         this.animator.registerFallingDeath(fall, hitGround);
-    }
-
-    /** Gallop threshold on the ground. */
-    private boolean isSprintingOnGround() {
-        return this.getDeltaMovement().horizontalDistanceSqr() > 0.02;
-    }
-
-    /** Dashing or otherwise moving fast enough that the flap cycle should speed up. */
-    private boolean isFastFlight() {
-        return this.getDeltaMovement().horizontalDistanceSqr() > 0.30 || this.dashCooldown() > 80;
     }
 
     @Override

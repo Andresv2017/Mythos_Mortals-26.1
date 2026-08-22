@@ -32,4 +32,18 @@ public enum PegasusTameState {
     public boolean isTaming() {
         return this == FEEDING || this == BONDED || this == BUCKING;
     }
+
+    /**
+     * The airborne half of the ritual, where the pegasus is carrying a rider and nothing but the
+     * bridle may interrupt it. Distinct from {@link #isTaming()}, which also covers the ground
+     * phase — during feeding the player must of course still be able to keep feeding.
+     */
+    public boolean isAirborneRitual() {
+        return this == BONDED || this == BUCKING;
+    }
+
+    /** Feeding may start on a wild pegasus and must keep working once it is under way. */
+    public boolean acceptsApples() {
+        return this == WILD || this == FEEDING;
+    }
 }

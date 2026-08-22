@@ -20,18 +20,31 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class PegasusFlightController {
 
-    /** Acceleration applied along the look vector while holding forward. */
-    private static final double FORWARD_ACCEL = 0.055;
+    /**
+     * Acceleration along the look vector while holding forward. Against {@link #DRAG} this settles
+     * at roughly 0.9 blocks per tick — about eighteen blocks a second, twice a galloping horse.
+     */
+    private static final double FORWARD_ACCEL = 0.080;
     /** Velocity multiplier while holding back — a brake, not a reverse. */
     private static final double BRAKE = 0.80;
     private static final double STRAFE_ACCEL = 0.030;
     private static final double CLIMB_ACCEL = 0.045;
     private static final double DESCEND_ACCEL = 0.055;
+    /** Extra thrust while the rider holds sprint — the second gear, and the sprint animations. */
+    private static final double SPRINT_MULTIPLIER = 1.7;
     /** Per-tick drag. Low enough to keep momentum, high enough to bound top speed. */
     private static final double DRAG = 0.91;
     private static final double MAX_SPEED = 1.6;
-    /** Passive sink when neither climbing nor accelerating — a glide, so hovering costs input. */
-    private static final double GLIDE_SINK = 0.006;
+    /**
+     * Look angles inside this many degrees of level count as level.
+     *
+     * <p>Without it, holding forward with an almost-level camera still bleeds altitude, because the
+     * look vector always carries a little pitch and there is no way to hold the mouse perfectly
+     * still. The deadzone is what makes level flight something you can actually fly.
+     */
+    private static final float LEVEL_PITCH_DEADZONE = 8.0F;
+    /** How hard vertical drift is killed when the rider asks for neither up nor down. */
+    private static final double HOVER_DAMPING = 0.55;
 
     public static final double DASH_IMPULSE = 1.8;
     public static final int DASH_COOLDOWN_TICKS = 100;
@@ -49,11 +62,12 @@ public final class PegasusFlightController {
     /** Applies one tick of ridden flight. Replaces the vanilla travel path entirely. */
     public static void travel(PegasusEntity pegasus, Player rider) {
         Input input = riderInput(rider);
-        Vec3 look = rider.getLookAngle();
+        Vec3 look = flightVector(rider);
         Vec3 motion = pegasus.getDeltaMovement();
 
         if (input.forward()) {
-            motion = motion.add(look.scale(FORWARD_ACCEL));
+            double thrust = input.sprint() ? FORWARD_ACCEL * SPRINT_MULTIPLIER : FORWARD_ACCEL;
+            motion = motion.add(look.scale(thrust));
         } else if (input.backward()) {
             motion = motion.scale(BRAKE);
         }
@@ -69,11 +83,12 @@ public final class PegasusFlightController {
 
         if (input.jump()) {
             motion = motion.add(0.0, CLIMB_ACCEL, 0.0);
-        }
-        if (input.shift()) {
+        } else if (input.shift()) {
             motion = motion.add(0.0, -DESCEND_ACCEL, 0.0);
-        } else if (!input.jump() && !input.forward()) {
-            motion = motion.add(0.0, -GLIDE_SINK, 0.0);
+        } else if (!input.forward()) {
+            // Altitude hold. Asking for nothing should mean staying put, not sinking: hovering is a
+            // thing you do on a winged mount, and it has to be as easy as letting go of the keys.
+            motion = new Vec3(motion.x, motion.y * HOVER_DAMPING, motion.z);
         }
 
         motion = motion.scale(DRAG);
@@ -83,6 +98,19 @@ public final class PegasusFlightController {
 
         pegasus.setDeltaMovement(motion);
         pegasus.move(MoverType.SELF, motion);
+    }
+
+    /**
+     * The direction the pegasus flies for a given rider: their look, flattened to horizontal when
+     * the camera is near enough to level. See {@link #LEVEL_PITCH_DEADZONE}.
+     */
+    private static Vec3 flightVector(Player rider) {
+        Vec3 look = rider.getLookAngle();
+        if (Math.abs(rider.getXRot()) >= LEVEL_PITCH_DEADZONE) {
+            return look;
+        }
+        Vec3 flat = new Vec3(look.x, 0.0, look.z);
+        return flat.lengthSqr() < 1.0E-4 ? look : flat.normalize();
     }
 
     /** The Wind Surge: a single impulse along the rider's look vector. */
