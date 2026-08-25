@@ -1,6 +1,6 @@
 package net.darkblade.mythosmortals.registry;
 
-import net.darkblade.mythosmortals.MythosMortals;
+import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.deluxelib.datagen.DeluxeEntityLootProvider;
 import net.darkblade.deluxelib.datagen.DeluxeEntityLootSubProvider;
 import net.darkblade.deluxelib.datagen.DeluxeLangProvider;

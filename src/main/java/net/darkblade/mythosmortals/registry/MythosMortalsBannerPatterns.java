@@ -1,6 +1,6 @@
 package net.darkblade.mythosmortals.registry;
 
-import net.darkblade.mythosmortals.MythosMortals;
+import net.darkblade.mythosmortals.core.MythosMortals;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;

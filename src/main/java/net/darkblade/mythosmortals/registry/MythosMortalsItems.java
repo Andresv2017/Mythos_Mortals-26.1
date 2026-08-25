@@ -1,7 +1,7 @@
 package net.darkblade.mythosmortals.registry;
 
-import net.darkblade.mythosmortals.MythosMortals;
-import net.darkblade.mythosmortals.content.spear.DoriSpearItem;
+import net.darkblade.mythosmortals.core.MythosMortals;
+import net.darkblade.mythosmortals.item.spear.DoriSpearItem;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;

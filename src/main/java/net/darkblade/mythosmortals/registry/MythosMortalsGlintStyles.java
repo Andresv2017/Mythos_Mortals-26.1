@@ -1,6 +1,6 @@
 package net.darkblade.mythosmortals.registry;
 
-import net.darkblade.mythosmortals.MythosMortals;
+import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.deluxelib.client.render.GlintStyle;
 import net.darkblade.deluxelib.client.render.GlintStyles;
 import net.minecraft.resources.Identifier;
