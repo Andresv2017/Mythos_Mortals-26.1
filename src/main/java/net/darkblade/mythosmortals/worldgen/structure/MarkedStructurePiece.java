@@ -1,5 +1,4 @@
 package net.darkblade.mythosmortals.worldgen.structure;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import com.mojang.logging.LogUtils;
 import net.darkblade.deluxelib.entity.IArmoredEntity;
@@ -37,6 +36,7 @@ import org.slf4j.Logger;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
+import net.darkblade.mythosmortals.registry.MythosMortalsStructures;
 
 public class MarkedStructurePiece extends TemplateStructurePiece {
 
@@ -57,7 +57,7 @@ public class MarkedStructurePiece extends TemplateStructurePiece {
 
     public MarkedStructurePiece(StructureTemplateManager structureTemplateManager, Identifier template, BlockPos position, Rotation rotation, int carveTop, boolean ignoreAir, boolean clearVegetation, int groundY, boolean clearAbove, boolean fillBelow) {
         super(
-            MythosMortalsRegistry.MARKED_STRUCTURE_PIECE.get(),
+            MythosMortalsStructures.MARKED_STRUCTURE_PIECE.get(),
             0,
             structureTemplateManager,
             template,
@@ -75,7 +75,7 @@ public class MarkedStructurePiece extends TemplateStructurePiece {
 
     public MarkedStructurePiece(StructureTemplateManager structureTemplateManager, CompoundTag tag) {
         super(
-            MythosMortalsRegistry.MARKED_STRUCTURE_PIECE.get(),
+            MythosMortalsStructures.MARKED_STRUCTURE_PIECE.get(),
             tag,
             structureTemplateManager,
             location -> makeSettings(structureTemplateManager, location,

@@ -1,5 +1,4 @@
 package net.darkblade.mythosmortals.worldgen.structure;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
@@ -17,6 +16,7 @@ import net.minecraft.world.level.levelgen.structure.StructureType;
 import org.slf4j.Logger;
 
 import java.util.Optional;
+import net.darkblade.mythosmortals.registry.MythosMortalsStructures;
 
 public class MarkedTemplateStructure extends Structure {
 
@@ -325,7 +325,7 @@ public class MarkedTemplateStructure extends Structure {
 
     @Override
     public StructureType<?> type() {
-        return MythosMortalsRegistry.MARKED_TEMPLATE_STRUCTURE.get();
+        return MythosMortalsStructures.MARKED_TEMPLATE_STRUCTURE.get();
     }
 
 }

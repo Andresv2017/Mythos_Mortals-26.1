@@ -2,7 +2,6 @@ package net.darkblade.mythosmortals.entity.pegasus.menu;
 
 import net.darkblade.mythosmortals.entity.pegasus.PegasusEntity;
 import net.darkblade.mythosmortals.entity.pegasus.PegasusEquipment;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -15,6 +14,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import net.darkblade.mythosmortals.registry.MythosMortalsMenus;
 
 public class PegasusInventoryMenu extends AbstractContainerMenu {
 
@@ -28,7 +28,7 @@ public class PegasusInventoryMenu extends AbstractContainerMenu {
 
     public PegasusInventoryMenu(int containerId, Inventory playerInventory,
                                 Container bridleContainer, @Nullable PegasusEntity pegasus) {
-        super(MythosMortalsRegistry.PEGASUS_MENU.get(), containerId);
+        super(MythosMortalsMenus.PEGASUS_MENU.get(), containerId);
         this.bridleContainer = bridleContainer;
         this.pegasus = pegasus;
         bridleContainer.startOpen(playerInventory.player);

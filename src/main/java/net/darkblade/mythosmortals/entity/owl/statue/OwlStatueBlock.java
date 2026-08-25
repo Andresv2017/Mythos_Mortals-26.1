@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.entity.owl.statue;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.deluxelib.block.StatueBlock;
@@ -27,6 +26,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import net.darkblade.mythosmortals.registry.MythosMortalsEntities;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlockEntities;
 
 
 public class OwlStatueBlock extends StatueBlock {
@@ -35,7 +35,7 @@ public class OwlStatueBlock extends StatueBlock {
             new StatueType(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "owl"));
 
     public OwlStatueBlock(BlockBehaviour.Properties properties) {
-        super(properties, MythosMortalsRegistry.OWL_STATUE_BLOCK_ENTITY);
+        super(properties, MythosMortalsBlockEntities.OWL_STATUE_BLOCK_ENTITY);
     }
 
     @Override

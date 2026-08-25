@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.block.amphora;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import com.mojang.serialization.MapCodec;
 import net.darkblade.mythosmortals.core.MythosMortals;
@@ -22,6 +21,8 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
+import net.darkblade.mythosmortals.registry.MythosMortalsRecipes;
+import net.darkblade.mythosmortals.registry.MythosMortalsDataComponents;
 
 
 public class MarinatingRecipe extends CustomRecipe {
@@ -48,7 +49,7 @@ public class MarinatingRecipe extends CustomRecipe {
         }
 
         ItemStack marinated = food.copyWithCount(count);
-        marinated.set(MythosMortalsRegistry.MARINATED.get(), Unit.INSTANCE);
+        marinated.set(MythosMortalsDataComponents.MARINATED.get(), Unit.INSTANCE);
         marinated.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         return marinated;
     }
@@ -69,7 +70,7 @@ public class MarinatingRecipe extends CustomRecipe {
 
     @Override
     public @NotNull RecipeSerializer<MarinatingRecipe> getSerializer() {
-        return MythosMortalsRegistry.MARINATING.get();
+        return MythosMortalsRecipes.MARINATING.get();
     }
 
     private static @Nullable ItemStack findOil(CraftingInput input) {
@@ -99,7 +100,7 @@ public class MarinatingRecipe extends CustomRecipe {
             if (stack.isEmpty() || isOil(stack)) {
                 continue;
             }
-            if (!stack.is(MARINATABLE) || stack.has(MythosMortalsRegistry.MARINATED.get())) {
+            if (!stack.is(MARINATABLE) || stack.has(MythosMortalsDataComponents.MARINATED.get())) {
                 return -1;
             }
             if (first == null) {

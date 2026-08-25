@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.effect;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.minecraft.world.entity.LivingEntity;
@@ -9,6 +8,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsEffects;
 
 @EventBusSubscriber(modid = MythosMortals.MODID)
 public final class BorealCourageEvents {
@@ -24,7 +24,7 @@ public final class BorealCourageEvents {
         if (event.getSource().getDirectEntity() != attacker) {
             return;
         }
-        if (!attacker.hasEffect(MythosMortalsRegistry.BOREAL_COURAGE)) {
+        if (!attacker.hasEffect(MythosMortalsEffects.BOREAL_COURAGE)) {
             return;
         }
         if (!isBorealWeapon(attacker.getMainHandItem())) {

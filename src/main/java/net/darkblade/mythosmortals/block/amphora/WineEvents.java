@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.block.amphora;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.mythosmortals.effect.BorealCourageEffect;
@@ -13,6 +12,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import org.jetbrains.annotations.NotNull;
 import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
+import net.darkblade.mythosmortals.registry.MythosMortalsEffects;
 
 
 @EventBusSubscriber(modid = MythosMortals.MODID)
@@ -51,7 +51,7 @@ public final class WineEvents {
     }
 
     public static void drink(@NotNull Player player) {
-        boolean stillBuffed = player.hasEffect(MythosMortalsRegistry.BOREAL_COURAGE);
+        boolean stillBuffed = player.hasEffect(MythosMortalsEffects.BOREAL_COURAGE);
         boolean alreadyDizzy = player.hasEffect(MobEffects.NAUSEA);
 
         BorealCourageEffect.apply(player);

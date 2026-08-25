@@ -1,5 +1,4 @@
 package net.darkblade.mythosmortals.block.amphora;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.minecraft.ChatFormatting;
@@ -15,6 +14,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsDataComponents;
 
 
 @EventBusSubscriber(modid = MythosMortals.MODID)
@@ -33,7 +33,7 @@ public final class MarinatedFoodEvents {
             return;
         }
         ItemStack stack = event.getItem();
-        if (!stack.has(MythosMortalsRegistry.MARINATED.get())) {
+        if (!stack.has(MythosMortalsDataComponents.MARINATED.get())) {
             return;
         }
         FoodProperties food = stack.get(DataComponents.FOOD);
@@ -51,7 +51,7 @@ public final class MarinatedFoodEvents {
 
     @SubscribeEvent
     public static void onTooltip(@NotNull ItemTooltipEvent event) {
-        if (!event.getItemStack().has(MythosMortalsRegistry.MARINATED.get())) {
+        if (!event.getItemStack().has(MythosMortalsDataComponents.MARINATED.get())) {
             return;
         }
         event.getToolTip().add(Component.translatable("tooltip.mythosmortals.marinated")

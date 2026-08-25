@@ -1,5 +1,4 @@
 package net.darkblade.mythosmortals.effect;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.minecraft.resources.Identifier;
@@ -10,6 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsEffects;
 
 public class BorealCourageEffect extends MobEffect {
 
@@ -29,6 +29,6 @@ public class BorealCourageEffect extends MobEffect {
     }
 
     public static void apply(@NotNull LivingEntity target) {
-        target.addEffect(new MobEffectInstance(MythosMortalsRegistry.BOREAL_COURAGE, DURATION_TICKS));
+        target.addEffect(new MobEffectInstance(MythosMortalsEffects.BOREAL_COURAGE, DURATION_TICKS));
     }
 }

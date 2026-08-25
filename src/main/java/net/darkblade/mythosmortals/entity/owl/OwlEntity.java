@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.entity.owl;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.deluxelib.anim.*;
@@ -66,6 +65,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import net.darkblade.mythosmortals.registry.MythosMortalsParticles;
 
 public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEntity>, Possessable, Perchable {
 
@@ -1498,7 +1498,7 @@ public class OwlEntity extends AbstractFlyingEntity implements Animatable<OwlEnt
                     Vec3 end = origin.add(facing.normalize().scale(beam.length()));
                     // longDistance: the default 32-block cut-off would hide the screech at exactly
                     // the range the spyglass sends the owl to.
-                    ParticleFx.beam(server, MythosMortalsRegistry.OWL_BOOM.get(), origin, end,
+                    ParticleFx.beam(server, MythosMortalsParticles.OWL_BOOM.get(), origin, end,
                             SONIC_PARTICLE_SPACING, SONIC_PARTICLE_SKIP, true);
                     attacker.playSound(SoundEvents.WARDEN_SONIC_BOOM, 2.0F, 1.5F);
                     // Recoil for the pilot only — the camera is the owl.

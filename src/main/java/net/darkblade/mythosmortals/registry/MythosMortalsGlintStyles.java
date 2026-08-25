@@ -8,7 +8,7 @@ import net.minecraft.resources.Identifier;
 public final class MythosMortalsGlintStyles {
 
     public static void register() {
-        GlintStyles.register(MythosMortalsRegistry.MARINATED, new GlintStyle(
+        GlintStyles.register(MythosMortalsDataComponents.MARINATED, new GlintStyle(
             Identifier.fromNamespaceAndPath(MythosMortals.MODID, "textures/misc/olive_oil_glint.png")));
     }
 

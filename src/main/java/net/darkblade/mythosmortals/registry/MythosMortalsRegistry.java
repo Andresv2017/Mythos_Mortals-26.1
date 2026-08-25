@@ -1,7 +1,6 @@
 package net.darkblade.mythosmortals.registry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
-import net.darkblade.deluxelib.block.StatueBlockEntity;
 import net.darkblade.deluxelib.block.StatueRegistry;
 import net.darkblade.deluxelib.block.StatueRenderer;
 import net.darkblade.deluxelib.client.render.HelmetInteriors;
@@ -11,15 +10,12 @@ import net.darkblade.deluxelib.spawn.DeluxeBiomeSpawns;
 import net.darkblade.mythosmortals.entity.pegasus.PegasusEntity;
 import net.darkblade.mythosmortals.entity.pegasus.client.render.PegasusModel;
 import net.darkblade.mythosmortals.entity.pegasus.client.render.PegasusRenderer;
-import net.darkblade.mythosmortals.entity.pegasus.menu.PegasusInventoryMenu;
 import net.darkblade.mythosmortals.entity.pegasus.client.PegasusInventoryScreen;
 import net.darkblade.mythosmortals.entity.pegasus.network.PegasusDashServerPacket;
-import net.darkblade.mythosmortals.block.amphora.MarinatingRecipe;
 import net.darkblade.mythosmortals.entity.arpy.ArpyEntity;
 import net.darkblade.mythosmortals.entity.arpy.client.render.ArpyModel;
 import net.darkblade.mythosmortals.entity.arpy.client.render.ArpyRenderer;
 import net.darkblade.mythosmortals.entity.athenian.AthenianEntity;
-import net.darkblade.mythosmortals.effect.BorealCourageEffect;
 import net.darkblade.mythosmortals.entity.athenian.client.render.AthenianHelmetInteriorModel;
 import net.darkblade.mythosmortals.entity.athenian.client.render.AthenianModel;
 import net.darkblade.mythosmortals.entity.athenian.client.render.AthenianRenderer;
@@ -40,26 +36,15 @@ import net.darkblade.mythosmortals.entity.spartan.client.render.SpartanHelmetInt
 import net.darkblade.mythosmortals.entity.spartan.client.render.SpartanModel;
 import net.darkblade.mythosmortals.entity.spartan.client.render.SpartanRenderer;
 import net.darkblade.mythosmortals.item.spear.client.render.DoriSpearProjectileModel;
-import net.darkblade.mythosmortals.worldgen.structure.MarkedStructurePiece;
-import net.darkblade.mythosmortals.worldgen.structure.MarkedTemplateStructure;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.object.boat.BoatModel;
 import net.minecraft.client.particle.SonicBoomParticle;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.entity.BoatRenderer;
-import net.minecraft.core.particles.ParticleType;
-import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.util.Unit;
-import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.levelgen.structure.StructureType;
-import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -70,14 +55,10 @@ import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.event.BlockEntityTypeAddBlocksEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
-import net.neoforged.neoforge.registries.DeferredHolder;
 import net.minecraft.world.entity.SpawnPlacementTypes;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class MythosMortalsRegistry {
 
@@ -92,75 +73,19 @@ public final class MythosMortalsRegistry {
         new ModelLayerLocation(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "chest_boat/olive"), "main");
 
 
-    public static final DeferredRegister<ParticleType<?>> PARTICLE_TYPES =
-        DeferredRegister.create(Registries.PARTICLE_TYPE, MythosMortals.MODID);
-
-    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> OWL_BOOM =
-        PARTICLE_TYPES.register("owl_boom", () -> new SimpleParticleType(false));
-
-    public static final DeferredRegister<MobEffect> MOB_EFFECTS =
-        DeferredRegister.create(Registries.MOB_EFFECT, MythosMortals.MODID);
-
-    public static final DeferredHolder<MobEffect, BorealCourageEffect> BOREAL_COURAGE =
-        MOB_EFFECTS.register("boreal_courage", BorealCourageEffect::new);
-
-    public static final DeferredRegister.DataComponents DATA_COMPONENTS =
-        DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, MythosMortals.MODID);
-
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Unit>> MARINATED =
-        DATA_COMPONENTS.registerComponentType("marinated", builder -> builder
-            .persistent(Unit.CODEC)
-            .networkSynchronized(Unit.STREAM_CODEC));
-
-    public static final DeferredRegister<RecipeSerializer<?>> RECIPE_SERIALIZERS =
-        DeferredRegister.create(Registries.RECIPE_SERIALIZER, MythosMortals.MODID);
-
-
-    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<MarinatingRecipe>> MARINATING =
-        RECIPE_SERIALIZERS.register("marinating",
-            () -> new RecipeSerializer<>(MarinatingRecipe.MAP_CODEC, MarinatingRecipe.STREAM_CODEC));
-
-    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
-        DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MythosMortals.MODID);
-
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StatueBlockEntity>> OWL_STATUE_BLOCK_ENTITY =
-        StatueBlockEntity.registerType(BLOCK_ENTITY_TYPES, "owl_statue", MythosMortalsBlocks.OWL_STATUE::get, OwlStatueBlock.OWL_TYPE);
-
-    public static final DeferredRegister<MenuType<?>> MENU_TYPES =
-        DeferredRegister.create(Registries.MENU, MythosMortals.MODID);
-
-    public static final DeferredHolder<MenuType<?>, MenuType<PegasusInventoryMenu>> PEGASUS_MENU =
-        MENU_TYPES.register("pegasus_inventory",
-            () -> IMenuTypeExtension.create(PegasusInventoryMenu::new));
-
-    public static final DeferredRegister<StructureType<?>> STRUCTURE_TYPES =
-        DeferredRegister.create(Registries.STRUCTURE_TYPE, MythosMortals.MODID);
-
-
-    public static final DeferredHolder<StructureType<?>, StructureType<MarkedTemplateStructure>> MARKED_TEMPLATE_STRUCTURE =
-        STRUCTURE_TYPES.register("marked_template",
-            () -> (StructureType<MarkedTemplateStructure>) () -> MarkedTemplateStructure.CODEC);
-
-    public static final DeferredRegister<StructurePieceType> STRUCTURE_PIECES =
-        DeferredRegister.create(Registries.STRUCTURE_PIECE, MythosMortals.MODID);
-
-
-    public static final DeferredHolder<StructurePieceType, StructurePieceType> MARKED_STRUCTURE_PIECE =
-        STRUCTURE_PIECES.register("marked_structure",
-            () -> (StructurePieceType.StructureTemplateType) MarkedStructurePiece::new);
 
 
     public static void register(IEventBus bus) {
         MythosMortalsEntities.ENTITY_TYPES.register(bus);
-        MENU_TYPES.register(bus);
+        MythosMortalsMenus.MENU_TYPES.register(bus);
         MythosMortalsBlocks.BLOCKS.register(bus);
-        BLOCK_ENTITY_TYPES.register(bus);
-        PARTICLE_TYPES.register(bus);
-        MOB_EFFECTS.register(bus);
-        DATA_COMPONENTS.register(bus);
-        RECIPE_SERIALIZERS.register(bus);
-        STRUCTURE_TYPES.register(bus);
-        STRUCTURE_PIECES.register(bus);
+        MythosMortalsBlockEntities.BLOCK_ENTITY_TYPES.register(bus);
+        MythosMortalsParticles.PARTICLE_TYPES.register(bus);
+        MythosMortalsEffects.MOB_EFFECTS.register(bus);
+        MythosMortalsDataComponents.DATA_COMPONENTS.register(bus);
+        MythosMortalsRecipes.RECIPE_SERIALIZERS.register(bus);
+        MythosMortalsStructures.STRUCTURE_TYPES.register(bus);
+        MythosMortalsStructures.STRUCTURE_PIECES.register(bus);
     }
 
 
@@ -280,12 +205,12 @@ public final class MythosMortalsRegistry {
 
         @SubscribeEvent
         public static void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
-            event.registerSpriteSet(OWL_BOOM.get(), SonicBoomParticle.Provider::new);
+            event.registerSpriteSet(MythosMortalsParticles.OWL_BOOM.get(), SonicBoomParticle.Provider::new);
         }
 
         @SubscribeEvent
         public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-            event.register(PEGASUS_MENU.get(), PegasusInventoryScreen::new);
+            event.register(MythosMortalsMenus.PEGASUS_MENU.get(), PegasusInventoryScreen::new);
         }
 
         @SubscribeEvent
@@ -298,7 +223,7 @@ public final class MythosMortalsRegistry {
             event.registerEntityRenderer(MythosMortalsEntities.PEGASUS.get(), PegasusRenderer::new);
             event.registerEntityRenderer(MythosMortalsEntities.THROWN_DORI_SPEAR.get(),
                 ctx -> new ThrownWeaponRenderer<>(ctx, DoriSpearProjectileModel.LAYER_LOCATION, DORI_SPEAR_TEXTURE));
-            event.registerBlockEntityRenderer(OWL_STATUE_BLOCK_ENTITY.get(), StatueRenderer::new);
+            event.registerBlockEntityRenderer(MythosMortalsBlockEntities.OWL_STATUE_BLOCK_ENTITY.get(), StatueRenderer::new);
             event.registerEntityRenderer(MythosMortalsEntities.OLIVE_BOAT.get(), ctx -> new BoatRenderer(ctx, OLIVE_BOAT_LAYER));
             event.registerEntityRenderer(MythosMortalsEntities.OLIVE_CHEST_BOAT.get(), ctx -> new BoatRenderer(ctx, OLIVE_CHEST_BOAT_LAYER));
         }
