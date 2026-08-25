@@ -35,6 +35,15 @@ sourceSets.main.resources {
 
 repositories {
     mavenLocal()
+
+    // CurseMaven: sirve DeluxeLib publicado en CurseForge.
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
 }
 
 base {
@@ -125,7 +134,7 @@ configurations {
 }
 
 dependencies {
-    implementation 'net.darkblade.deluxelib:deluxelib:1.0.0'
+    implementation "curse.maven:deluxe-lib-1594910:8728008"
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
