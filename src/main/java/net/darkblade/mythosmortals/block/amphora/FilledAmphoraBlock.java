@@ -1,5 +1,4 @@
 package net.darkblade.mythosmortals.block.amphora;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -25,6 +24,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Supplier;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 public class FilledAmphoraBlock extends Block {
 
@@ -80,7 +80,7 @@ public class FilledAmphoraBlock extends Block {
         if (left > 1) {
             level.setBlock(pos, state.setValue(SERVINGS, left - 1), Block.UPDATE_ALL);
         } else {
-            level.setBlock(pos, MythosMortalsRegistry.GREEK_AMPHORA.get().defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(pos, MythosMortalsBlocks.GREEK_AMPHORA.get().defaultBlockState(), Block.UPDATE_ALL);
         }
     }
 }

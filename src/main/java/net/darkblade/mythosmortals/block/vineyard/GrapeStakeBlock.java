@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.block.vineyard;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import com.mojang.serialization.MapCodec;
 import net.darkblade.mythosmortals.core.MythosMortals;
@@ -32,6 +31,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 public class GrapeStakeBlock extends Block {
     public static final MapCodec<GrapeStakeBlock> CODEC = simpleCodec(GrapeStakeBlock::new);
@@ -108,7 +108,7 @@ public class GrapeStakeBlock extends Block {
             return InteractionResult.SUCCESS;
         }
 
-        BlockState vine = MythosMortalsRegistry.GRAPE_VINE.get().defaultBlockState();
+        BlockState vine = MythosMortalsBlocks.GRAPE_VINE.get().defaultBlockState();
 
         level.setBlock(bottom.above(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
         DoublePlantBlock.placeAt(level, vine, bottom, Block.UPDATE_ALL);

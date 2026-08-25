@@ -21,6 +21,7 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 
 public class MarinatingRecipe extends CustomRecipe {
@@ -59,7 +60,7 @@ public class MarinatingRecipe extends CustomRecipe {
             ItemStack stack = input.getItem(slot);
             if (stack.is(MythosMortalsItems.OLIVE_OIL_BOTTLE.get())) {
                 remaining.set(slot, new ItemStack(Items.GLASS_BOTTLE));
-            } else if (stack.is(MythosMortalsRegistry.GREEK_AMPHORA_OLIVE_OIL_ITEM.get())) {
+            } else if (stack.is(MythosMortalsBlocks.GREEK_AMPHORA_OLIVE_OIL_ITEM.get())) {
                 remaining.set(slot, AmphoraServings.spend(stack));
             }
         }
@@ -87,7 +88,7 @@ public class MarinatingRecipe extends CustomRecipe {
 
     private static boolean isOil(ItemStack stack) {
         return stack.is(MythosMortalsItems.OLIVE_OIL_BOTTLE.get())
-            || stack.is(MythosMortalsRegistry.GREEK_AMPHORA_OLIVE_OIL_ITEM.get());
+            || stack.is(MythosMortalsBlocks.GREEK_AMPHORA_OLIVE_OIL_ITEM.get());
     }
 
     private static int countFood(CraftingInput input) {

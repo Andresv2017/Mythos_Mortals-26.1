@@ -51,7 +51,7 @@ public final class MythosMortalsDatagen {
 
         @Override
         protected void addTranslations() {
-            add(MythosMortalsRegistry.ATHENIAN.get(), "Athenian Warrior");
+            add(MythosMortalsEntities.ATHENIAN.get(), "Athenian Warrior");
 
             add("itemGroup.mythosmortals.deluxe_armory", "Deluxe Armory");
             add(MythosMortalsItems.ATHENA_OCULAR_UPGRADE.get(), "Athena's Ocular");
@@ -64,20 +64,20 @@ public final class MythosMortalsDatagen {
             add(MythosMortalsItems.CENTAUR_BANNER_PATTERN.get(), "Centaur Banner Pattern");
             add(MythosMortalsItems.SPARTA_BANNER_PATTERN.get(), "Lambda Banner Pattern");
 
-            add(MythosMortalsRegistry.GREEK_AMPHORA.get(), "Greek Amphora");
-            add(MythosMortalsRegistry.GREEK_AMPHORA_GRAPES.get(), "Greek Amphora of Grapes");
-            add(MythosMortalsRegistry.GREEK_AMPHORA_OLIVES.get(), "Greek Amphora of Olives");
-            add(MythosMortalsRegistry.GREEK_AMPHORA_WINE.get(), "Greek Amphora of Wine");
-            add(MythosMortalsRegistry.GREEK_AMPHORA_OLIVE_OIL.get(), "Greek Amphora of Olive Oil");
+            add(MythosMortalsBlocks.GREEK_AMPHORA.get(), "Greek Amphora");
+            add(MythosMortalsBlocks.GREEK_AMPHORA_GRAPES.get(), "Greek Amphora of Grapes");
+            add(MythosMortalsBlocks.GREEK_AMPHORA_OLIVES.get(), "Greek Amphora of Olives");
+            add(MythosMortalsBlocks.GREEK_AMPHORA_WINE.get(), "Greek Amphora of Wine");
+            add(MythosMortalsBlocks.GREEK_AMPHORA_OLIVE_OIL.get(), "Greek Amphora of Olive Oil");
 
-            add(MythosMortalsRegistry.OLIVE_CHEST_BOAT_ITEM.get(), "Olive Boat with Chest");
+            add(MythosMortalsBlocks.OLIVE_CHEST_BOAT_ITEM.get(), "Olive Boat with Chest");
 
             autoItemNames(MythosMortalsItems.ITEMS);
 
-            autoBlockNames(MythosMortalsRegistry.BLOCKS);
+            autoBlockNames(MythosMortalsBlocks.BLOCKS);
 
-            add(MythosMortalsRegistry.OLIVE_CHEST_BOAT.get(), "Olive Boat with Chest");
-            autoEntityNames(MythosMortalsRegistry.ENTITY_TYPES);
+            add(MythosMortalsEntities.OLIVE_CHEST_BOAT.get(), "Olive Boat with Chest");
+            autoEntityNames(MythosMortalsEntities.ENTITY_TYPES);
 
             add("effect.mythosmortals.boreal_courage", "Boreal Courage");
 
@@ -138,26 +138,26 @@ public final class MythosMortalsDatagen {
 
     private static final class Loot extends DeluxeEntityLootSubProvider {
         Loot(HolderLookup.Provider registries) {
-            super(registries, MythosMortalsRegistry.ENTITY_TYPES);
+            super(registries, MythosMortalsEntities.ENTITY_TYPES);
         }
 
         @Override
         protected void addLootTables() {
-            add(MythosMortalsRegistry.ATHENIAN.get(), LootTable.lootTable()
+            add(MythosMortalsEntities.ATHENIAN.get(), LootTable.lootTable()
                 .withPool(LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1))
                     .add(LootItem.lootTableItem(Items.BONE)
                         .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
                     .when(LootItemRandomChanceCondition.randomChance(0.5f))));
 
-            add(MythosMortalsRegistry.ARPY.get(), LootTable.lootTable()
+            add(MythosMortalsEntities.ARPY.get(), LootTable.lootTable()
                 .withPool(LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1))
                     .add(LootItem.lootTableItem(MythosMortalsItems.ARPY_FEATHER.get())
                         .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
                     .when(LootItemRandomChanceCondition.randomChance(0.6f))));
 
-            add(MythosMortalsRegistry.MINOTAUR.get(), LootTable.lootTable()
+            add(MythosMortalsEntities.MINOTAUR.get(), LootTable.lootTable()
                 .withPool(LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1))
                     .add(LootItem.lootTableItem(MythosMortalsItems.GREEK_BRONZE_CORE.get()))));

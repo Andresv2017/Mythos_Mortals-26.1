@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsEntities;
 
 
 public class OwlStatueBlock extends StatueBlock {
@@ -55,7 +56,7 @@ public class OwlStatueBlock extends StatueBlock {
         Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
         level.removeBlock(pos, false);
 
-        OwlEntity owl = new OwlEntity(MythosMortalsRegistry.OWL.get(), level);
+        OwlEntity owl = new OwlEntity(MythosMortalsEntities.OWL.get(), level);
         owl.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
         float yaw = facing.toYRot();
         owl.setYRot(yaw);

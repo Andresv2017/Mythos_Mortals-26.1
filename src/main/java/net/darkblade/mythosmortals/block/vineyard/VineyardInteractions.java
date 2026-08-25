@@ -1,5 +1,4 @@
 package net.darkblade.mythosmortals.block.vineyard;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.minecraft.core.BlockPos;
@@ -15,6 +14,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 @EventBusSubscriber(modid = MythosMortals.MODID)
 public final class VineyardInteractions {
@@ -45,7 +45,7 @@ public final class VineyardInteractions {
 
         Player player = event.getPlayer();
         if (!level.isClientSide()) {
-            BlockState placed = MythosMortalsRegistry.STICK_BLOCK.get().defaultBlockState();
+            BlockState placed = MythosMortalsBlocks.STICK_BLOCK.get().defaultBlockState();
             level.setBlock(stakePos, placed, Block.UPDATE_ALL);
             itemStack.consume(1, player);
             GrapeStakeBlock.announcePlacement(level, stakePos, placed, player);

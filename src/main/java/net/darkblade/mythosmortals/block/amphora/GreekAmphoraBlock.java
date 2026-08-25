@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.block.amphora;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -19,6 +18,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Supplier;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 
 public class GreekAmphoraBlock extends Block {
@@ -41,10 +41,10 @@ public class GreekAmphoraBlock extends Block {
                                                    @NotNull Player player, @NotNull InteractionHand hand,
                                                    @NotNull BlockHitResult hitResult) {
         if (itemStack.is(MythosMortalsItems.GRAPES.get())) {
-            return tryFill(itemStack, level, pos, player, MythosMortalsRegistry.GREEK_AMPHORA_GRAPES);
+            return tryFill(itemStack, level, pos, player, MythosMortalsBlocks.GREEK_AMPHORA_GRAPES);
         }
         if (itemStack.is(MythosMortalsItems.OLIVES.get())) {
-            return tryFill(itemStack, level, pos, player, MythosMortalsRegistry.GREEK_AMPHORA_OLIVES);
+            return tryFill(itemStack, level, pos, player, MythosMortalsBlocks.GREEK_AMPHORA_OLIVES);
         }
         return InteractionResult.TRY_WITH_EMPTY_HAND;
     }

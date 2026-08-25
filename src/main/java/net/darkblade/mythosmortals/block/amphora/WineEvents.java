@@ -12,6 +12,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 
 @EventBusSubscriber(modid = MythosMortals.MODID)
@@ -33,7 +34,7 @@ public final class WineEvents {
             drink(player);
             return;
         }
-        if (event.getItem().is(MythosMortalsRegistry.GREEK_AMPHORA_WINE_ITEM.get())) {
+        if (event.getItem().is(MythosMortalsBlocks.GREEK_AMPHORA_WINE_ITEM.get())) {
             drink(player);
             returnAmphora(event, player);
         }

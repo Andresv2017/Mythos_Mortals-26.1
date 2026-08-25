@@ -1,10 +1,10 @@
 package net.darkblade.mythosmortals.block.amphora;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.BlockItemStateProperties;
 import org.jetbrains.annotations.NotNull;
+import net.darkblade.mythosmortals.registry.MythosMortalsBlocks;
 
 public final class AmphoraServings {
 
@@ -18,7 +18,7 @@ public final class AmphoraServings {
     public static @NotNull ItemStack spend(@NotNull ItemStack amphora) {
         int left = of(amphora);
         if (left <= 1) {
-            return new ItemStack(MythosMortalsRegistry.GREEK_AMPHORA_ITEM.get());
+            return new ItemStack(MythosMortalsBlocks.GREEK_AMPHORA_ITEM.get());
         }
         ItemStack used = amphora.copyWithCount(1);
         used.set(DataComponents.BLOCK_STATE, used

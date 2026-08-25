@@ -1,6 +1,5 @@
 package net.darkblade.mythosmortals.item.spear;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
-import net.darkblade.mythosmortals.registry.MythosMortalsRegistry;
 
 import net.darkblade.deluxelib.entity.projectile.ThrownWeapon;
 import net.minecraft.sounds.SoundEvent;
@@ -9,6 +8,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.darkblade.mythosmortals.registry.MythosMortalsEntities;
 
 public class ThrownDoriSpear extends ThrownWeapon {
     private static final float THROWN_DAMAGE = 6.0F;
@@ -18,11 +18,11 @@ public class ThrownDoriSpear extends ThrownWeapon {
     }
 
     public ThrownDoriSpear(Level level, LivingEntity owner, ItemStack pickupItemStack) {
-        super(MythosMortalsRegistry.THROWN_DORI_SPEAR.get(), level, owner, pickupItemStack);
+        super(MythosMortalsEntities.THROWN_DORI_SPEAR.get(), level, owner, pickupItemStack);
     }
 
     public ThrownDoriSpear(Level level, double x, double y, double z, ItemStack pickupItemStack) {
-        super(MythosMortalsRegistry.THROWN_DORI_SPEAR.get(), level, x, y, z, pickupItemStack);
+        super(MythosMortalsEntities.THROWN_DORI_SPEAR.get(), level, x, y, z, pickupItemStack);
     }
 
     @Override
