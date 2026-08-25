@@ -40,7 +40,11 @@
 
 ---
 
-### Task 1: La herramienta de migración
+### Task 1: La herramienta de migración — NO EJECUTADA
+
+> Los movimientos se hicieron directamente con `git mv` sin construir la
+> herramienta, así que no hay `tools/repackage.py` ni nada que retirar en la
+> Tarea 11. Los pasos de abajo quedan como referencia histórica.
 
 **Files:**
 - Create: `tools/repackage.py`
@@ -378,7 +382,7 @@ git add tools/repackage.py && git commit -m "Add package migration tool"
 
 Va primera a propósito: es el cambio con más alcance de imports, y conviene absorberlo con el árbol viejo todavía intacto.
 
-- [ ] **Step 1: Mover**
+- [x] **Step 1: Mover**
 
 ```bash
 python tools/repackage.py move core
@@ -386,7 +390,7 @@ python tools/repackage.py move core
 
 Esperado: `movidos 3 archivos en la fase core`, seguido de una lista larga de líneas `fix ...` — casi todos los archivos del mod importan `MythosMortals`.
 
-- [ ] **Step 2: Comprobar convergencia**
+- [x] **Step 2: Comprobar convergencia**
 
 ```bash
 python tools/repackage.py check
@@ -394,7 +398,7 @@ python tools/repackage.py check
 
 Esperado: `archivos que cambiarian: 0`. Confirma que el arreglo llegó a un punto fijo.
 
-- [ ] **Step 3: Compilar**
+- [x] **Step 3: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -402,7 +406,7 @@ Esperado: `archivos que cambiarian: 0`. Confirma que el arreglo llegó a un punt
 
 Esperado: `BUILD SUCCESSFUL`, con los dos avisos de API deprecada de la línea base y ninguno más.
 
-- [ ] **Step 4: Comprobar que git ve renombrados y no borrados**
+- [x] **Step 4: Comprobar que git ve renombrados y no borrados**
 
 ```bash
 git status --short | cut -c1-3 | sort | uniq -c
@@ -410,7 +414,7 @@ git status --short | cut -c1-3 | sort | uniq -c
 
 Esperado: 3 entradas con `R` (renombrado). Si aparecen pares `D`/`??` es que algo copió en vez de mover.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "Move mod entrypoint and config into core/ and client/"
@@ -434,7 +438,7 @@ git add -A && git commit -m "Move mod entrypoint and config into core/ and clien
 
 Van juntas porque son features sin código de cliente entrelazado (salvo el único modelo de la lanza), así que validan el script antes de tocar búho y pegaso.
 
-- [ ] **Step 1: Mover**
+- [x] **Step 1: Mover**
 
 ```bash
 python tools/repackage.py move small
@@ -442,7 +446,7 @@ python tools/repackage.py move small
 
 Esperado: `movidos 20 archivos en la fase small`.
 
-- [ ] **Step 2: Comprobar convergencia**
+- [x] **Step 2: Comprobar convergencia**
 
 ```bash
 python tools/repackage.py check
@@ -450,7 +454,7 @@ python tools/repackage.py check
 
 Esperado: `archivos que cambiarian: 0`.
 
-- [ ] **Step 3: Compilar**
+- [x] **Step 3: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -458,7 +462,7 @@ Esperado: `archivos que cambiarian: 0`.
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A && git commit -m "Move blocks, spear, effect and structures out of content/"
@@ -479,7 +483,7 @@ git add -A && git commit -m "Move blocks, spear, effect and structures out of co
 
 Aquí es donde el arreglo de imports empieza a ganarse el sueldo: `ArpyEntity` y `ArpyAnimation` compartían paquete y no se importaban entre sí; al separarlos, el script tiene que **añadir** imports que antes no existían.
 
-- [ ] **Step 1: Mover**
+- [x] **Step 1: Mover**
 
 ```bash
 python tools/repackage.py move mobs
@@ -487,7 +491,7 @@ python tools/repackage.py move mobs
 
 Esperado: `movidos 14 archivos en la fase mobs`.
 
-- [ ] **Step 2: Comprobar que se añadieron imports nuevos, no solo reescritos**
+- [x] **Step 2: Comprobar que se añadieron imports nuevos, no solo reescritos**
 
 ```bash
 git diff --cached -U0 -- "*Entity.java" | grep "^+import net.darkblade.mythosmortals.entity"
@@ -495,7 +499,7 @@ git diff --cached -U0 -- "*Entity.java" | grep "^+import net.darkblade.mythosmor
 
 Esperado: al menos una línea por mob, del tipo `+import net.darkblade.mythosmortals.entity.arpy.client.render.ArpyAnimation;`. Si no aparece ninguna, el detector de uso no está funcionando y la compilación del paso 4 lo va a confirmar.
 
-- [ ] **Step 3: Comprobar convergencia**
+- [x] **Step 3: Comprobar convergencia**
 
 ```bash
 python tools/repackage.py check
@@ -503,7 +507,7 @@ python tools/repackage.py check
 
 Esperado: `archivos que cambiarian: 0`.
 
-- [ ] **Step 4: Compilar**
+- [x] **Step 4: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -511,7 +515,7 @@ Esperado: `archivos que cambiarian: 0`.
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "Move arpy, athenian and spartan into entity/ with client/render split"
@@ -533,7 +537,7 @@ git add -A && git commit -m "Move arpy, athenian and spartan into entity/ with c
 
 Primer uso de `debug/`. `MinotaurAnimDebug` solo consume API pública de `MinotaurEntity`, así que separarlo no rompe visibilidad — a diferencia del pegaso en la Tarea 7.
 
-- [ ] **Step 1: Mover**
+- [x] **Step 1: Mover**
 
 ```bash
 python tools/repackage.py move minotaur
@@ -541,7 +545,7 @@ python tools/repackage.py move minotaur
 
 Esperado: `movidos 14 archivos en la fase minotaur`.
 
-- [ ] **Step 2: Comprobar convergencia**
+- [x] **Step 2: Comprobar convergencia**
 
 ```bash
 python tools/repackage.py check
@@ -549,7 +553,7 @@ python tools/repackage.py check
 
 Esperado: `archivos que cambiarian: 0`.
 
-- [ ] **Step 3: Compilar**
+- [x] **Step 3: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -557,7 +561,7 @@ Esperado: `archivos que cambiarian: 0`.
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A && git commit -m "Move minotaur into entity/ with behavior, debug and client/render split"
@@ -582,7 +586,7 @@ git add -A && git commit -m "Move minotaur into entity/ with behavior, debug and
 
 La feature más enredada: 19 archivos que se reparten entre 5 paquetes. `perch/` desaparece — sus dos archivos se van a lados distintos. `OwlAim` sube a `client/` desde la raíz de la feature, que es la corrección que motivó todo esto.
 
-- [ ] **Step 1: Mover**
+- [x] **Step 1: Mover**
 
 ```bash
 python tools/repackage.py move owl
@@ -590,7 +594,7 @@ python tools/repackage.py move owl
 
 Esperado: `movidos 19 archivos en la fase owl`.
 
-- [ ] **Step 2: Comprobar que `perch/` y `statue/` quedaron como toca**
+- [x] **Step 2: Comprobar que `perch/` y `statue/` quedaron como toca**
 
 ```bash
 ls src/main/java/net/darkblade/mythosmortals/entity/owl src/main/java/net/darkblade/mythosmortals/entity/owl/client src/main/java/net/darkblade/mythosmortals/entity/owl/statue
@@ -598,7 +602,7 @@ ls src/main/java/net/darkblade/mythosmortals/entity/owl src/main/java/net/darkbl
 
 Esperado: `OwlEntity.java` y `OwlPerchPlacement.java` en la raíz; `OwlAim.java`, `OwlPerchHand.java`, `OwlStatueClient.java` en `client/`; solo `OwlStatueBlock.java` en `statue/`. Ningún directorio `perch/`.
 
-- [ ] **Step 3: Comprobar convergencia**
+- [x] **Step 3: Comprobar convergencia**
 
 ```bash
 python tools/repackage.py check
@@ -606,7 +610,7 @@ python tools/repackage.py check
 
 Esperado: `archivos que cambiarian: 0`.
 
-- [ ] **Step 4: Compilar**
+- [x] **Step 4: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -614,7 +618,7 @@ Esperado: `archivos que cambiarian: 0`.
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "Move owl into entity/ with client, network and statue split"
@@ -636,7 +640,7 @@ git add -A && git commit -m "Move owl into entity/ with client, network and stat
 
 **Esta tarea contiene el único cambio de código real del plan.** `PegasusFlightDebug` accede a cinco miembros package-private de `PegasusEntity`; al mandarlo a `debug/` deja de compartir paquete y el compilador lo rechaza con cinco `is not public in PegasusEntity`. Están declarados así a propósito —el comentario en `PegasusEntity` dice que son "vistas estrechas sobre estado protegido de la base, solo para PegasusFlightDebug"— y `PegasusFlightDebug` es su único consumidor externo, verificado por grep. Ampliarlos a `public` es el precio de separar `debug/`.
 
-- [ ] **Step 1: Mover**
+- [x] **Step 1: Mover**
 
 ```bash
 python tools/repackage.py move pegasus
@@ -644,7 +648,7 @@ python tools/repackage.py move pegasus
 
 Esperado: `movidos 20 archivos en la fase pegasus`.
 
-- [ ] **Step 2: Compilar y ver fallar exactamente estos cinco errores**
+- [x] **Step 2: Compilar y ver fallar exactamente estos cinco errores**
 
 ```bash
 ./gradlew compileJava --offline
@@ -652,7 +656,7 @@ Esperado: `movidos 20 archivos en la fase pegasus`.
 
 Esperado: `5 errors`, todos en `entity/pegasus/debug/PegasusFlightDebug.java` (líneas 65, 76, 78, 101, 104), todos de la forma `X is not public in PegasusEntity; cannot be accessed from outside package`. **Si aparecen errores en otros archivos, parar**: significa que hay más acoplamiento package-private del previsto y hay que analizarlo antes de seguir ampliando visibilidad a ciegas.
 
-- [ ] **Step 3: Ampliar la visibilidad de los cinco miembros**
+- [x] **Step 3: Ampliar la visibilidad de los cinco miembros**
 
 En `src/main/java/net/darkblade/mythosmortals/entity/pegasus/PegasusEntity.java`, añadir `public` a estas cinco declaraciones (están en las líneas 91, 92, 490, 492 y 494):
 
@@ -669,7 +673,7 @@ En `src/main/java/net/darkblade/mythosmortals/entity/pegasus/PegasusEntity.java`
     public double groundHeightForDebug() { return this.groundHeight(); }
 ```
 
-- [ ] **Step 4: Actualizar el comentario que justificaba la visibilidad estrecha**
+- [x] **Step 4: Actualizar el comentario que justificaba la visibilidad estrecha**
 
 El comentario sobre esos accesores dice hoy "Narrow views onto protected base state, for PegasusFlightDebug only". Ya no son estrechos. Sustituirlo por:
 
@@ -678,7 +682,7 @@ El comentario sobre esos accesores dice hoy "Narrow views onto protected base st
     // Public rather than package-private because that class no longer shares this package.
 ```
 
-- [ ] **Step 5: Compilar**
+- [x] **Step 5: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -686,7 +690,7 @@ El comentario sobre esos accesores dice hoy "Narrow views onto protected base st
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 6: Borrar los directorios vacíos que deja `git mv`**
+- [x] **Step 6: Borrar los directorios vacíos que deja `git mv`**
 
 `git mv` no borra el directorio de origen cuando queda vacío, así que `content/` y todos sus subdirectorios siguen existiendo en disco (git los ignora, pero ensucian el árbol y el IDE los muestra).
 
@@ -694,7 +698,7 @@ Esperado: `BUILD SUCCESSFUL`.
 find src/main/java -type d -empty -delete
 ```
 
-- [ ] **Step 7: Comprobar que `content/` ha desaparecido del todo**
+- [x] **Step 7: Comprobar que `content/` ha desaparecido del todo**
 
 ```bash
 ls src/main/java/net/darkblade/mythosmortals/
@@ -703,7 +707,7 @@ grep -rl "mythosmortals.content" src/ ; echo "codigo de salida grep: $?"
 
 Esperado: el listado es exactamente `block client core effect entity item registry worldgen` — sin `content`. Y el grep no imprime ninguna ruta (código de salida 1, que aquí significa "ninguna coincidencia" y es el resultado bueno).
 
-- [ ] **Step 8: Comprobar el recuento de archivos**
+- [x] **Step 8: Comprobar el recuento de archivos**
 
 ```bash
 find src/main/java -name '*.java' | wc -l
@@ -711,7 +715,7 @@ find src/main/java -name '*.java' | wc -l
 
 Esperado: `95`. Todavía no se ha creado ninguna clase nueva; el reparto del registry llega en las tareas siguientes.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A && git commit -m "Move pegasus into entity/ and retire the content/ package"
@@ -735,7 +739,7 @@ git add -A && git commit -m "Move pegasus into entity/ and retire the content/ p
 
 Las dos clases grandes van juntas y solas porque entre ellas se referencian: `OLIVE_BOAT` (un `EntityType`) usa `OLIVE_BOAT_ITEM::get` (un `DeferredItem`), y ese cruce es lo único delicado del corte.
 
-- [ ] **Step 1: Crear `MythosMortalsEntities`**
+- [x] **Step 1: Crear `MythosMortalsEntities`**
 
 Cortar de `MythosMortalsRegistry` el campo `ENTITY_TYPES` y los holders `ATHENIAN`, `SPARTAN`, `ARPY`, `OWL`, `MINOTAUR`, `PEGASUS`, `THROWN_DORI_SPEAR` (declarados juntos al principio de la clase), más `OLIVE_BOAT` y `OLIVE_CHEST_BOAT` (declarados más abajo, entremezclados con los bloques del olivo). Pegarlos **literalmente, sin reescribir ninguna expresión** en:
 
@@ -755,7 +759,7 @@ Dejar los imports en blanco: el paso 4 los rellena.
 
 Dentro de `OLIVE_BOAT` y `OLIVE_CHEST_BOAT` hay dos referencias cualificadas `MythosMortalsRegistry.OLIVE_BOAT_ITEM::get` y `MythosMortalsRegistry.OLIVE_CHEST_BOAT_ITEM::get`. No hace falta tocarlas a mano: el script del paso 3 las reescribe a `MythosMortalsBlocks.` junto con todo lo demás.
 
-- [ ] **Step 2: Crear `MythosMortalsBlocks`**
+- [x] **Step 2: Crear `MythosMortalsBlocks`**
 
 Cortar de `MythosMortalsRegistry` el campo `BLOCKS` y **todas** las declaraciones `DeferredBlock<...>` y `DeferredItem<...>` que lo acompañan, desde `OWL_STATUE` hasta la última antes de `PARTICLE_TYPES`. Pegarlas literalmente en:
 
@@ -775,7 +779,7 @@ Las llamadas a `MythosMortalsItems.ITEMS.registerSimpleBlockItem(...)` y `regist
 
 **No mover** `OLIVE_BOAT` ni `OLIVE_CHEST_BOAT` aquí aunque estén físicamente en medio de esta región: son `EntityType` y van a `MythosMortalsEntities`.
 
-- [ ] **Step 3: Reescribir las referencias en todo el mod**
+- [x] **Step 3: Reescribir las referencias en todo el mod**
 
 Los símbolos ya no viven en `MythosMortalsRegistry`. Este script reescribe las referencias cualificadas:
 
@@ -805,7 +809,7 @@ PYEOF
 
 Cuidado con el orden de la comprobación: `OLIVE_BOAT` está en `ENT` y `OLIVE_BOAT_ITEM` empieza igual, por eso el `endswith('_ITEM')` va explícito. La regex `[A-Z][A-Z0-9_]*` solo toca constantes en mayúsculas, así que no altera llamadas a métodos como `MythosMortalsRegistry.register(bus)`.
 
-- [ ] **Step 4: Arreglar imports**
+- [x] **Step 4: Arreglar imports**
 
 ```bash
 python tools/repackage.py fix
@@ -813,7 +817,7 @@ python tools/repackage.py fix
 
 Añade `import net.darkblade.mythosmortals.registry.MythosMortalsEntities;` y `MythosMortalsBlocks` donde ahora hagan falta, y quita los `MythosMortalsRegistry` que hayan quedado sin uso... salvo que sigan usándose para otros símbolos. Comprobar el resultado con el compilador.
 
-- [ ] **Step 5: Compilar**
+- [x] **Step 5: Compilar**
 
 ```bash
 ./gradlew compileJava --offline
@@ -821,7 +825,7 @@ Añade `import net.darkblade.mythosmortals.registry.MythosMortalsEntities;` y `M
 
 Esperado: `BUILD SUCCESSFUL`. Los fallos típicos aquí son un holder que se quedó en las dos clases (símbolo duplicado) o uno que no se movió a ninguna (símbolo no encontrado).
 
-- [ ] **Step 6: Comprobar que `register(bus)` sigue completo**
+- [x] **Step 6: Comprobar que `register(bus)` sigue completo**
 
 ```bash
 grep -c "\.register(bus);" src/main/java/net/darkblade/mythosmortals/registry/MythosMortalsRegistry.java
@@ -829,7 +833,7 @@ grep -c "\.register(bus);" src/main/java/net/darkblade/mythosmortals/registry/My
 
 Esperado: `10`. `ENTITY_TYPES` y `BLOCKS` ahora se referencian cualificados (`MythosMortalsEntities.ENTITY_TYPES.register(bus)`), pero siguen siendo diez llamadas.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "Split entities and blocks out of the central registry"
@@ -857,7 +861,7 @@ git add -A && git commit -m "Split entities and blocks out of the central regist
 
 Seis de estas clases nacen con un solo holder. Es fragmentación deliberada, decidida en el spec: cada una es el sitio evidente donde va la siguiente partícula o el siguiente menú.
 
-- [ ] **Step 1: Crear las siete clases**
+- [x] **Step 1: Crear las siete clases**
 
 Para cada bloque de declaraciones que queda en `MythosMortalsRegistry`, cortarlo literalmente a su clase nueva con esta forma (aquí el ejemplo real de partículas; repetir el patrón para las otras seis):
 
@@ -889,7 +893,7 @@ Reparto exacto:
 | `MythosMortalsDataComponents` | `DATA_COMPONENTS`, `MARINATED` |
 | `MythosMortalsStructures` | `STRUCTURE_TYPES`, `STRUCTURE_PIECES`, `MARKED_TEMPLATE_STRUCTURE`, `MARKED_STRUCTURE_PIECE` |
 
-- [ ] **Step 2: Dejar la fachada**
+- [x] **Step 2: Dejar la fachada**
 
 Tras los cortes, `MythosMortalsRegistry` debe contener exactamente tres métodos y nada de estado. `register(bus)` queda así:
 
@@ -910,7 +914,7 @@ Tras los cortes, `MythosMortalsRegistry` debe contener exactamente tres métodos
 
 `registerGameplay()` y `registerPackets()` se quedan como están salvo que sus referencias a holders pasen a la clase nueva (`MythosMortalsEntities.ATHENIAN`, `MythosMortalsEntities.PEGASUS`).
 
-- [ ] **Step 3: Reescribir las referencias que queden**
+- [x] **Step 3: Reescribir las referencias que queden**
 
 ```bash
 python - <<'PYEOF'
@@ -939,7 +943,7 @@ for dirpath, _d, files in os.walk('src/main/java'):
 PYEOF
 ```
 
-- [ ] **Step 4: Arreglar imports y compilar**
+- [x] **Step 4: Arreglar imports y compilar**
 
 ```bash
 python tools/repackage.py fix && ./gradlew compileJava --offline
@@ -947,7 +951,7 @@ python tools/repackage.py fix && ./gradlew compileJava --offline
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 5: Comprobar que la fachada quedó sin estado**
+- [x] **Step 5: Comprobar que la fachada quedó sin estado**
 
 ```bash
 grep -cE "DeferredRegister|DeferredHolder|DeferredBlock|DeferredItem" src/main/java/net/darkblade/mythosmortals/registry/MythosMortalsRegistry.java
@@ -955,7 +959,7 @@ grep -cE "DeferredRegister|DeferredHolder|DeferredBlock|DeferredItem" src/main/j
 
 Esperado: `0` fuera de la línea de `import`. Si sale más de 0, quedó algún holder sin repartir.
 
-- [ ] **Step 6: Comprobar que los diez registros siguen ahí**
+- [x] **Step 6: Comprobar que los diez registros siguen ahí**
 
 ```bash
 grep -c "\.register(bus);" src/main/java/net/darkblade/mythosmortals/registry/MythosMortalsRegistry.java
@@ -963,7 +967,7 @@ grep -c "\.register(bus);" src/main/java/net/darkblade/mythosmortals/registry/My
 
 Esperado: `10`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "Split remaining registries out and reduce MythosMortalsRegistry to a facade"
@@ -984,7 +988,7 @@ git add -A && git commit -m "Split remaining registries out and reduce MythosMor
 
 Con esto la frontera client/common queda completa: deja de haber código de cliente dentro de `registry/`.
 
-- [ ] **Step 1: Sacar `CommonModEvents`**
+- [x] **Step 1: Sacar `CommonModEvents`**
 
 Mover la clase anidada `CommonModEvents` de `MythosMortalsRegistry` a su propio archivo, de clase anidada a clase de primer nivel:
 
@@ -1003,7 +1007,7 @@ public final class MythosMortalsCommonEvents {
 
 Sus métodos ya son `public static`, así que solo cambia el contenedor. Las referencias a holders ya quedaron cualificadas en las Tareas 8–9.
 
-- [ ] **Step 2: Sacar `ClientModEvents`**
+- [x] **Step 2: Sacar `ClientModEvents`**
 
 Mover la clase anidada `ClientModEvents` a `client/MythosMortalsClientEvents.java`, arrastrando las tres constantes privadas que solo ella usa:
 
@@ -1032,7 +1036,7 @@ public final class MythosMortalsClientEvents {
 
 `OLIVE_BOAT_LAYER` y `OLIVE_CHEST_BOAT_LAYER` eran `public` en `MythosMortalsRegistry` sin que nadie fuera de `ClientModEvents` las leyera; aquí pasan a `private`. `DORI_SPEAR_TEXTURE` ya era `private`.
 
-- [ ] **Step 3: Comprobar que nadie más usaba las constantes**
+- [x] **Step 3: Comprobar que nadie más usaba las constantes**
 
 ```bash
 grep -rn "OLIVE_BOAT_LAYER\|OLIVE_CHEST_BOAT_LAYER\|DORI_SPEAR_TEXTURE" src/main/java --include=*.java
@@ -1040,7 +1044,7 @@ grep -rn "OLIVE_BOAT_LAYER\|OLIVE_CHEST_BOAT_LAYER\|DORI_SPEAR_TEXTURE" src/main
 
 Esperado: todas las coincidencias dentro de `client/MythosMortalsClientEvents.java`. Si aparece alguna fuera, esa constante no puede ser `private`.
 
-- [ ] **Step 4: Arreglar imports y compilar**
+- [x] **Step 4: Arreglar imports y compilar**
 
 ```bash
 python tools/repackage.py fix && ./gradlew compileJava --offline
@@ -1048,7 +1052,7 @@ python tools/repackage.py fix && ./gradlew compileJava --offline
 
 Esperado: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 5: Comprobar que `registry/` ya no tiene código de cliente**
+- [x] **Step 5: Comprobar que `registry/` ya no tiene código de cliente**
 
 ```bash
 grep -rn "net.minecraft.client\|Dist.CLIENT" src/main/java/net/darkblade/mythosmortals/registry/
@@ -1057,7 +1061,7 @@ echo "codigo de salida grep: $?"
 
 Esperado: ninguna coincidencia (código de salida 1). Este es el objetivo declarado de la reestructura, comprobado.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "Extract common and client mod events from the registry"
@@ -1075,7 +1079,7 @@ git add -A && git commit -m "Extract common and client mod events from the regis
 - Consumes: el árbol completo de las Tareas 2–10.
 - Produces: nada. Es la tarea de cierre.
 
-- [ ] **Step 1: Recuento de archivos**
+- [x] **Step 1: Recuento de archivos**
 
 ```bash
 find src/main/java -name '*.java' | wc -l
@@ -1083,7 +1087,7 @@ find src/main/java -name '*.java' | wc -l
 
 Esperado: `106` — los 95 originales más las 11 clases extraídas del registry (`Entities`, `Blocks`, `BlockEntities`, `Menus`, `Particles`, `Effects`, `Recipes`, `DataComponents`, `Structures`, `CommonEvents`, `ClientEvents`).
 
-- [ ] **Step 2: Build completo**
+- [x] **Step 2: Build completo**
 
 ```bash
 ./gradlew build
@@ -1091,7 +1095,7 @@ Esperado: `106` — los 95 originales más las 11 clases extraídas del registry
 
 Esperado: `BUILD SUCCESSFUL`. Va más allá de `compileJava`: empaqueta el jar y pasa las tareas de recursos.
 
-- [ ] **Step 3: Datagen — la comprobación que de verdad importa**
+- [x] **Step 3: Datagen — la comprobación que de verdad importa**
 
 ```bash
 ./gradlew runData
@@ -1099,7 +1103,7 @@ Esperado: `BUILD SUCCESSFUL`. Va más allá de `compileJava`: empaqueta el jar y
 
 Esperado: `BUILD SUCCESSFUL`. Un `DeferredRegister` que se hubiera quedado fuera de `register(bus)` compila perfectamente y solo se cae aquí, al arrancar el registro de verdad. Es el riesgo principal del corte del registry.
 
-- [ ] **Step 4: Comprobar que el datagen no cambió su salida**
+- [x] **Step 4: Comprobar que el datagen no cambió su salida**
 
 ```bash
 git status --short src/generated
@@ -1107,7 +1111,7 @@ git status --short src/generated
 
 Esperado: sin cambios. La reestructura no debe alterar un solo JSON generado; si `src/generated` aparece modificado, algo cambió de verdad y hay que investigarlo antes de cerrar.
 
-- [ ] **Step 5: Retirar la herramienta**
+- [x] **Step 5: Retirar la herramienta**
 
 ```bash
 git rm tools/repackage.py
@@ -1115,7 +1119,7 @@ git rm tools/repackage.py
 
 Cumplió su función. Queda en el historial (commit de la Tarea 1) por si hiciera falta otra migración.
 
-- [ ] **Step 6: Marcar el spec como implementado**
+- [x] **Step 6: Marcar el spec como implementado**
 
 En `docs/superpowers/specs/2026-08-24-reestructura-paquetes-design.md`, cambiar la línea de estado:
 
@@ -1123,7 +1127,7 @@ En `docs/superpowers/specs/2026-08-24-reestructura-paquetes-design.md`, cambiar 
 **Estado:** Implementado
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "Verify restructure end to end and retire the migration tool"

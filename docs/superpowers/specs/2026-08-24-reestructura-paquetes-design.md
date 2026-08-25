@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-08-24
 **Mod:** Mythos & Mortals (`mythosmortals`) — NeoForge 26.1
-**Estado:** Aprobado, listo para plan de implementación
+**Estado:** Implementado
 
 ---
 
