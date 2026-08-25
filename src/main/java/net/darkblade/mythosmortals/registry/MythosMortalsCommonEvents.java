@@ -48,6 +48,16 @@ public final class MythosMortalsCommonEvents {
             Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
             (type, level, reason, pos, random) -> true,
             RegisterSpawnPlacementsEvent.Operation.AND);
+
+        event.register(MythosMortalsEntities.SPARTAN.get(), SpawnPlacementTypes.ON_GROUND,
+            Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+            (type, level, reason, pos, random) -> true,
+            RegisterSpawnPlacementsEvent.Operation.AND);
+
+        event.register(MythosMortalsEntities.ARPY.get(), SpawnPlacementTypes.NO_RESTRICTIONS,
+            Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+            (type, level, reason, pos, random) -> true,
+            RegisterSpawnPlacementsEvent.Operation.AND);
     }
 
     @SubscribeEvent

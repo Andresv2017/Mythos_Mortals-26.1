@@ -29,8 +29,18 @@ public final class MythosMortalsRegistry {
 
     public static void registerGameplay() {
         DeluxeBiomeSpawns.builder(() -> MythosMortalsEntities.ATHENIAN.get(), MobCategory.MONSTER)
-            .spawnRate(20, 1, 2)
+            .spawnRate(8, 1, 2)
             .biomes(Biomes.PLAINS)
+            .submit();
+
+        DeluxeBiomeSpawns.builder(() -> MythosMortalsEntities.SPARTAN.get(), MobCategory.MONSTER)
+            .spawnRate(8, 1, 2)
+            .biomes(Biomes.SAVANNA, Biomes.SAVANNA_PLATEAU)
+            .submit();
+
+        DeluxeBiomeSpawns.builder(() -> MythosMortalsEntities.ARPY.get(), MobCategory.MONSTER)
+            .spawnRate(6, 1, 2)
+            .biomes(Biomes.JAGGED_PEAKS, Biomes.STONY_PEAKS, Biomes.WINDSWEPT_HILLS)
             .submit();
 
         // Rare and solitary, and only up where the air is thin — the spawn rule on top of this also
