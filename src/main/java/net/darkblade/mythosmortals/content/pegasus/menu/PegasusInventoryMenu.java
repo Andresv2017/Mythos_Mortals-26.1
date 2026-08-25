@@ -16,13 +16,6 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * The pegasus' three tack slots: saddle, body armour and the Bridle of Athena.
- *
- * <p>The first two are views onto the mob's real {@code SADDLE} and {@code BODY} equipment slots, so
- * putting armour on here is the same operation as feeding it in by hand. The bridle has no vanilla
- * slot to borrow and is backed by the entity's own one-slot container.
- */
 public class PegasusInventoryMenu extends AbstractContainerMenu {
 
     public static final int SLOT_SADDLE = 0;
@@ -67,7 +60,6 @@ public class PegasusInventoryMenu extends AbstractContainerMenu {
         this.addStandardInventorySlots(playerInventory, 8, 84);
     }
 
-    /** Client constructor: the entity id travels in the open-menu payload. */
     public PegasusInventoryMenu(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf buf) {
         this(containerId, playerInventory, new SimpleContainer(1), resolve(playerInventory, buf.readVarInt()));
     }
@@ -116,7 +108,6 @@ public class PegasusInventoryMenu extends AbstractContainerMenu {
         return original;
     }
 
-    /** Shift-clicking tack from the inventory puts it wherever it actually belongs. */
     private boolean moveIntoFirstMatchingTackSlot(ItemStack stack) {
         for (int index = 0; index < TACK_SLOTS; index++) {
             Slot target = this.getSlot(index);
@@ -127,7 +118,6 @@ public class PegasusInventoryMenu extends AbstractContainerMenu {
         return false;
     }
 
-    /** A single-item slot backed by one of the mob's real equipment slots. */
     private static class TackSlot extends Slot {
         private final PegasusEntity owner;
         private final EquipmentSlot equipmentSlot;
@@ -149,7 +139,6 @@ public class PegasusInventoryMenu extends AbstractContainerMenu {
         }
     }
 
-    /** Placeholder used only when the client cannot resolve the entity yet. */
     private static class InertSlot extends Slot {
         InertSlot(Container container, int index, int x, int y) {
             super(container, index, x, y);

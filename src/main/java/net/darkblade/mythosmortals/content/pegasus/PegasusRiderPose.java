@@ -5,16 +5,6 @@ import net.minecraft.client.animation.AnimationDefinition;
 import net.minecraft.client.animation.Keyframe;
 import net.minecraft.client.animation.KeyframeAnimations;
 
-/**
- * Seated pose for a player riding the pegasus — legs straddling the barrel, hands forward on the
- * reins. Authored on the same player-replica rig as {@code MinotaurRiderPose} (bones {@code torso},
- * {@code head}, {@code right_arm}, {@code left_arm}, {@code right_leg}, {@code left_leg}) and applied
- * to the real {@code HumanoidModel} by {@code HumanoidPoseApplier} from {@link PegasusRenderer}.
- *
- * <p>To change it, pose the rig in Blockbench, re-export, and replace the definition below — or nudge
- * it live in-game with {@code /deluxelib debug riderpose mythosmortals:pegasus} and paste the printed
- * values here.
- */
 public final class PegasusRiderPose {
 
     public static final AnimationDefinition RIDER_POSE = AnimationDefinition.Builder.withLength(0.0F)

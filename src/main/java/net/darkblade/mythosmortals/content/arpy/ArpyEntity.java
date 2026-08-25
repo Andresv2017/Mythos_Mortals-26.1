@@ -200,10 +200,6 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         this.goalSelector.addGoal(3, new FlightWanderGoal());
         this.goalSelector.addGoal(4, new ArpyLandingGoal());
 
-        // Las arpías de nido no deambulan: montan guardia posadas donde las dejó la estructura.
-        // El paseo de vanilla sí respeta el hogar, pero el radio (el de la plantilla más margen) es
-        // holgado a propósito para que quepa un círculo de vuelo, y a pie eso las saca del cuenco
-        // sin llegar a salirse de casa. Las salvajes, sin hogar, deambulan como siempre.
         WaterAvoidingRandomStrollGoal groundStroll = new WaterAvoidingRandomStrollGoal(this, 0.8) {
             @Override
             public boolean canUse() {

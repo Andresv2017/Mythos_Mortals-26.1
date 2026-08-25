@@ -12,13 +12,6 @@ import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Blockbench-exported pegasus rig. Bone names are the ones {@link PegasusAnimation} animates, so
- * renaming a bone here means re-exporting the animations too.
- *
- * <p>{@code reins} is part of the base mesh but only belongs on a bridled pegasus, so the renderer
- * toggles its visibility from {@code DeluxeEntityRenderState}.
- */
 public class PegasusModel extends EntityModel<DeluxeEntityRenderState> {
 
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(

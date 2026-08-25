@@ -98,10 +98,6 @@ public final class MythosMortalsItems {
             .food(WINE_FOOD, Consumables.DEFAULT_DRINK)
             .usingConvertsTo(Items.GLASS_BOTTLE));
 
-    /**
-     * Loot-only tack for the pegasus. Neither is craftable: the bridle is the gate on mythic flight
-     * and is meant to be earned in the ruins or the minotaur's lair.
-     */
     public static final DeferredItem<Item> ATHENA_BRIDLE =
         ITEMS.registerSimpleItem("athena_bridle", () -> new Item.Properties()
             .stacksTo(1)
@@ -112,12 +108,6 @@ public final class MythosMortalsItems {
             .stacksTo(1)
             .component(DataComponents.EQUIPPABLE, pegasusSaddleEquippable()));
 
-    /**
-     * A saddle slot entry with no equipment asset: the pegasus renderer draws the saddle from its
-     * own texture layer, so vanilla's equipment-model pipeline has nothing to do here. Equipping is
-     * driven from the mob's interaction handler rather than by right-clicking any passing animal,
-     * hence {@code equipOnInteract} being left off and dispensers being refused.
-     */
     private static net.minecraft.world.item.equipment.Equippable pegasusSaddleEquippable() {
         return net.minecraft.world.item.equipment.Equippable.builder(EquipmentSlot.SADDLE)
             .setEquipSound(SoundEvents.HORSE_SADDLE)
@@ -126,7 +116,6 @@ public final class MythosMortalsItems {
             .build();
     }
 
-    /** Dropped by harpies and found in their nests; a crafting material for later work. */
     public static final DeferredItem<Item> ARPY_FEATHER =
         ITEMS.registerSimpleItem("arpy_feather", Item.Properties::new);
 

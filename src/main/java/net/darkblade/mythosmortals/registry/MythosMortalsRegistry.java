@@ -121,17 +121,6 @@ import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/**
- * The demo mod's own registry: its entity types, blocks, block items, and block entity types, its
- * {@link #registerGameplay} wiring, and — client-side — registering its statue and helmet interiors
- * into the DeluxeLib library registries ({@code StatueRegistry}, {@code HelmetInteriors}).
- *
- * <p>Uses the specialized {@link DeferredRegister.Blocks}/{@code Items.registerSimpleBlockItem}
- * pair (NeoForge's own documented way to register a block + its BlockItem together), not the
- * generic {@code DeferredRegister<Block>} + a hand-built {@code BlockItem}: the hand-built version
- * crashed at load with "Trying to access unbound value" — the block wasn't guaranteed to be bound
- * yet when the item's factory ran. The specialized registers handle that ordering correctly.
- */
 public final class MythosMortalsRegistry {
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
         DeferredRegister.create(Registries.ENTITY_TYPE, MythosMortals.MODID);
@@ -582,7 +571,6 @@ public final class MythosMortalsRegistry {
     public static final DeferredRegister<MenuType<?>> MENU_TYPES =
         DeferredRegister.create(Registries.MENU, MythosMortals.MODID);
 
-    /** Built through NeoForge's extension so the pegasus' entity id can ride along in the payload. */
     public static final DeferredHolder<MenuType<?>, MenuType<PegasusInventoryMenu>> PEGASUS_MENU =
         MENU_TYPES.register("pegasus_inventory",
             () -> IMenuTypeExtension.create(PegasusInventoryMenu::new));

@@ -6,18 +6,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * The pegasus' bridle slot.
- *
- * <p>The saddle and the body armour live in the vanilla {@code SADDLE} and {@code BODY} equipment
- * slots — those already give syncing, dropping on death and NBT for free. The bridle has no vanilla
- * slot to borrow, so it gets this one-slot container, which the entity persists and drops itself.
- */
 public final class PegasusEquipment extends SimpleContainer {
 
     public static final int BRIDLE_SLOT = 0;
 
-    /** Armour tiers the renderer has a texture layer for. */
     public static final int TIER_NONE = 0;
     public static final int TIER_IRON = 1;
     public static final int TIER_GOLD = 2;
@@ -51,10 +43,6 @@ public final class PegasusEquipment extends SimpleContainer {
         return !this.getBridle().isEmpty();
     }
 
-    /**
-     * Maps a body-armour stack onto the texture layer to draw. Armour the pegasus can wear but has
-     * no layer for (leather, copper) still protects it — it just renders bare.
-     */
     public static int armorTier(ItemStack stack) {
         if (stack.is(Items.IRON_HORSE_ARMOR)) return TIER_IRON;
         if (stack.is(Items.GOLDEN_HORSE_ARMOR)) return TIER_GOLD;

@@ -21,10 +21,6 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Datagen providers for Mythos & Mortals's content — lang auto-naming, biome spawns and per-entity
- * loot tables — built on DeluxeLib's datagen helpers, wired to the mobs in {@link MythosMortalsRegistry}.
- */
 public final class MythosMortalsDatagen {
 
     private MythosMortalsDatagen() {
@@ -34,14 +30,12 @@ public final class MythosMortalsDatagen {
     // 26.1: GatherDataEvent is abstract — you must register listeners for its concrete Client/Server
     // subclasses (each fires only for that data-gen run), not the base event.
 
-    /** Wire to the mod bus: {@code modEventBus.addListener(MythosMortalsDatagen::gatherClientData);} */
     public static void gatherClientData(GatherDataEvent.Client event) {
         DataGenerator generator = event.getGenerator();
         PackOutput output = generator.getPackOutput();
         generator.addProvider(true, new Lang(output));
     }
 
-    /** Wire to the mod bus: {@code modEventBus.addListener(MythosMortalsDatagen::gatherServerData);} */
     public static void gatherServerData(GatherDataEvent.Server event) {
         DataGenerator generator = event.getGenerator();
         PackOutput output = generator.getPackOutput();

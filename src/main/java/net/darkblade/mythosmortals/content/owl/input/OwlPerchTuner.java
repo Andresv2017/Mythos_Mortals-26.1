@@ -16,13 +16,9 @@ import org.lwjgl.glfw.GLFW;
 public final class OwlPerchTuner extends NumpadAxisTuner {
     private static final OwlPerchTuner INSTANCE = new OwlPerchTuner();
 
-    /** Radians per nudge for the arm bone angles. ~2.9°, fine enough to land a bird on a hand. */
     private static final float ROT_STEP = 0.05F;
-    /** Blocks per nudge for the owl's offset. Deliberately finer than the rider tuner's 0.05. */
     private static final float POS_STEP = 0.02F;
-    /** Degrees per nudge for the first-person owl's rotation. */
     private static final float FP_ROT_STEP = 3.0F;
-    /** Multiplier per nudge for the first-person owl's scale. */
     private static final float SCALE_STEP = 0.05F;
 
     private enum Mode { ARM, OWL, FP_POS, FP_ROT }

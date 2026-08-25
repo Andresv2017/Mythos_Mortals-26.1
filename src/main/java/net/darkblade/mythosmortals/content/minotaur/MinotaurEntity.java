@@ -52,10 +52,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         this.moveControl = new DirectionalMoveControl<>(this).setTurnSpeed(6.0F).setCombatTurnSpeed(40.0F);
     }
 
-    /**
-     * Attacks are thrown from a standstill and every hitbox aims along yBodyRot, so the default
-     * 0.08 damping left the swing pointing ~30° off after faceTargetUntil expired.
-     */
     @Override
     protected BodyRotationControl createBodyControl() {
         final SmoothBodyRotationControl<MinotaurEntity> control = new SmoothBodyRotationControl<>(this);

@@ -14,12 +14,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Renders the pegasus, its tack layers, and any rider seated on its back.
- *
- * <p>The reins bone belongs to the base mesh but only makes sense on a bridled pegasus, so it is
- * toggled per frame from the render state rather than baked into the model.
- */
 public class PegasusRenderer extends FlyingMobRenderer<PegasusEntity, PegasusModel> implements RiderPoseHandler {
 
     private static final Identifier TEXTURE =

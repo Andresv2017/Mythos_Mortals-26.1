@@ -7,11 +7,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
-/**
- * Tack screen for the pegasus. Borrows the vanilla horse container art — same three-slot column on
- * the left, same player inventory below — and draws its own slot backdrops, since the pegasus has a
- * third slot where a horse has none.
- */
 public class PegasusInventoryScreen extends AbstractContainerScreen<PegasusInventoryMenu> {
 
     private static final Identifier BACKGROUND =

@@ -5,14 +5,6 @@ import net.minecraft.client.animation.AnimationDefinition;
 import net.minecraft.client.animation.Keyframe;
 import net.minecraft.client.animation.KeyframeAnimations;
 
-/**
- * Blockbench-exported "rider_pose" for a player mounted on the minotaur — authored on a
- * player-replica rig (bones {@code torso}, {@code head}, {@code right_arm}, {@code left_arm},
- * {@code right_leg}, {@code left_leg}). Applied to the real player {@code HumanoidModel} by
- * {@code HumanoidPoseApplier} from {@code MinotaurRenderer.applyRiderPose}; the rig model class
- * itself is never needed at runtime. To change the pose, re-pose the rig in Blockbench, re-export,
- * and replace this definition.
- */
 public final class MinotaurRiderPose {
 
     public static final AnimationDefinition RIDER_POSE = AnimationDefinition.Builder.withLength(0.0F)

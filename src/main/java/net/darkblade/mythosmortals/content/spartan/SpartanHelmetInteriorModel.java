@@ -11,13 +11,6 @@ import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.resources.Identifier;
 
-/**
- * "Filled" geometry for the Spartan helmet, used only in first-person hand view (see
- * {@link HelmetInteriorRenderer}) — same role as {@link AthenianHelmetInteriorModel}: the normal
- * Blockbench item model is a thin hollow shell that looks empty up close, so first-person swaps in
- * this solid Java model instead. Ported directly from the Blockbench Java export (identical geometry
- * to the Athenian interior; only the entity texture differs).
- */
 public final class SpartanHelmetInteriorModel {
     public static final ModelLayerLocation LAYER_LOCATION =
         new ModelLayerLocation(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "spartan_helmet_interior"), "main");

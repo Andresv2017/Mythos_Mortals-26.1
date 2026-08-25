@@ -12,17 +12,11 @@ import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Draws the pegasus' tack: the bridle, the saddle and whichever armour tier it is wearing. Each is a
- * full re-draw of the same rig with a different texture, so every layer follows the animation for
- * free — the same trick vanilla uses for horse armour.
- */
 public class PegasusEquipmentLayer extends RenderLayer<DeluxeEntityRenderState, PegasusModel> {
 
     private static final Identifier BRIDLE = texture("bridle_layer");
     private static final Identifier SADDLE = texture("saddle_layer");
 
-    /** Indexed by {@link PegasusEquipment} tier; index 0 is "no armour". */
     private static final Identifier[] ARMOR = {
             null,
             texture("iron_armor_layer"),

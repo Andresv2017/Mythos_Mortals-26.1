@@ -9,13 +9,6 @@ import net.darkblade.mythosmortals.content.pegasus.PegasusEntity;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Client → server: the rider asks for a Wind Surge.
- *
- * <p>Carries only the pegasus' id; every condition that makes the dash legal — ownership, being the
- * controlling rider, being airborne, cooldown — is re-checked server-side in
- * {@link PegasusEntity#tryDash}.
- */
 @PacketSide(side = Side.SERVER)
 public final class PegasusDashServerPacket extends AbstractNetworkPacket<PegasusDashServerPacket> {
 

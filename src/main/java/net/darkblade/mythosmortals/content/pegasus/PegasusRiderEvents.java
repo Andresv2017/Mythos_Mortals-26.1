@@ -11,22 +11,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityMountEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
-/**
- * The two things a rider needs that the entity cannot do on its own: keep them in the saddle for the
- * length of the ritual, and let them fit the bridle without aiming at the animal beneath them.
- */
 @EventBusSubscriber(modid = MythosMortals.MODID)
 public final class PegasusRiderEvents {
 
-    /**
-     * Keeps the rider in the saddle in the two places where sneaking has to mean something else.
-     *
-     * <p>Shift is the vanilla dismount key, and this mob needs it twice over: it is how you approach
-     * a pegasus without spooking it, so the ritual's auto-mount used to throw the player straight
-     * back off, and it is how a rider descends in flight, which would otherwise mean stepping off at
-     * altitude. So: during the ritual the only ways out are the bridle or the fall, and in flight
-     * you dismount by landing first.
-     */
     @SubscribeEvent
     public static void onDismount(EntityMountEvent event) {
         if (!event.isDismounting()
@@ -67,22 +54,6 @@ public final class PegasusRiderEvents {
         }
     }
 
-    /**
-     * Tack a rider fits from the saddle rather than from the ground.
-     *
-     * <p>Right-clicking the pegasus itself works through {@code mobInteract}, but a rider is sitting
-     * on the very hitbox they would have to hit — and during the buck it is throwing itself around
-     * the sky. So both of the moments that are on a clock are handled here instead, and the item
-     * goes on wherever the player happens to be looking:
-     *
-     * <ul>
-     *   <li>the <b>bridle</b>, during the fifteen seconds of bucking;
-     *   <li>the <b>saddle</b>, any time the rider is aboard an unsaddled tame one — which is what
-     *       lets them cut short the descent after the taming and fly it themselves.
-     * </ul>
-     *
-     * @return whether this right-click was tack going onto the pegasus the player is riding
-     */
     private static boolean fitTack(Player player, ItemStack held) {
         if (!(player.getVehicle() instanceof PegasusEntity pegasus)) {
             return false;

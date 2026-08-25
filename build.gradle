@@ -34,8 +34,6 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Deluxelib se resuelve desde el repositorio Maven local (~/.m2), publicado
-    // ahí con `./gradlew publishToMavenLocal` desde el proyecto de Deluxelib.
     mavenLocal()
 }
 

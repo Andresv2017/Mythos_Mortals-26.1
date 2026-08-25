@@ -7,12 +7,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * {@code /mythosmortals debug pegasusflight} — toggles {@link PegasusFlightDebug}.
- *
- * <p>A server command, not a client one: the flight state machine lives entirely on the server, and
- * the readout has to come from the side that owns the timers.
- */
 @EventBusSubscriber(modid = MythosMortals.MODID)
 public final class PegasusCommands {
 

@@ -17,58 +17,33 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Narrates, tick by tick, which clip should be playing and where its hit window falls — to the
- * action bar and to the server log. Half the repertoire still has no keyframes, so without this
- * those attacks land from invisible poses.
- *
- * <p>Server-side, one instance per entity. Impact ticks come from
- * {@link BaseAnimation#getFrameEvents()}, exactly where {@code HitWindow#applyTo} registered its
- * sweep, so the bar cannot drift from the real damage window.</p>
- *
- * <pre>
- *   [mino 41] attack_horizontal_1  ....X####.......  5/16  hit 4-8  | ATTACK_HORIZONTAL_1 t5 d2.91 y-3 cd 0.0s
- * </pre>
- */
 public final class MinotaurAnimDebug {
 
     private static final Logger LOG = LoggerFactory.getLogger(MinotaurAnimDebug.class);
 
-    /** Radio en el que un jugador ve el HUD cuando el minotauro no lo tiene como objetivo. */
     public static final double VIEW_RANGE = 24.0;
 
-    /** Tope de celdas de la barra: los clips largos (muerte, stun) se comprimen en vez de crecer. */
     private static final int MAX_BAR_CELLS = 22;
 
-    // Action bar (glifos de bloque, se ven bien en la fuente de MC)
     private static final char CELL_HIT = '█';
     private static final char CELL_PLAIN = '▬';
     private static final char CELL_CURSOR = '▉';
 
-    // Consola (ASCII: cualquier terminal, y alineado en monoespaciada)
     private static final char LOG_CELL_HIT = '#';
     private static final char LOG_CELL_PLAIN = '.';
     private static final char LOG_CELL_CURSOR = 'X';
 
     private final MinotaurEntity mino;
 
-    /**
-     * Clips whose {@code AnimSource} is still {@code () -> null}, filled by
-     * {@code MinotaurEntity#sinKeyframes}. Cannot be derived at runtime: invoking the supplier
-     * would classload {@link MinotaurAnimation}, which is client-only.
-     */
     private final Set<String> clipsSinKeyframes = new HashSet<>();
 
-    /** Estado del FSM en el tick anterior, para detectar y loguear las transiciones. */
     private int lastStateId = Integer.MIN_VALUE;
-    /** Ticks que duró el estado del que se acaba de salir. */
     private int lastStateTicks;
 
     public MinotaurAnimDebug(@NotNull MinotaurEntity mino) {
         this.mino = mino;
     }
 
-    /** Marca un clip como todavía sin keyframes. La llama {@code MinotaurEntity#sinKeyframes}. */
     public void markMissing(@NotNull String clipName) {
         this.clipsSinKeyframes.add(clipName);
     }
@@ -77,7 +52,6 @@ public final class MinotaurAnimDebug {
     // Tick
     // ------------------------------------------------------------------
 
-    /** Llamado una vez por tick de servidor desde {@link MinotaurEntity#tick()}. */
     public void tick() {
         final Cortex<MinotaurEntity, MinotaurState> cortex = this.mino.getCortex();
         final MinotaurState state = this.mino.serverState();
@@ -95,7 +69,6 @@ public final class MinotaurAnimDebug {
             this.lastStateTicks = cortex.ticksInState();
         }
 
-        // En reposo y sin nadie a quien perseguir no hay nada que analizar: no se ensucia el log.
         final boolean inCombat = this.mino.getTarget() != null || state != MinotaurState.IDLE;
 
         if (MinotaurCtx.DEBUG_ANIM_CONSOLE && inCombat) {
@@ -111,18 +84,12 @@ public final class MinotaurAnimDebug {
         }
     }
 
-    /** El clip de mayor prioridad que está sonando ahora mismo en la capa 0, o null. */
     @Nullable
     private BaseAnimation currentClip() {
         final Animation current = this.mino.animator().getCurrent(0);
         return current instanceof BaseAnimation base && base.isPlaying() ? base : null;
     }
 
-    /**
-     * The player it is fighting, or the nearest one in range. Two minotaurs on the same player
-     * would overwrite each other's line — accepted: this is a
-     * herramienta de banco de pruebas, no de partida.
-     */
     @Nullable
     private ServerPlayer pickViewer() {
         final LivingEntity target = this.mino.getTarget();
@@ -152,7 +119,6 @@ public final class MinotaurAnimDebug {
             line.append(" §7").append(clip.getTick()).append("§8/").append(clip.getDurationTicks());
         }
 
-        // --- estado del FSM, solo cuando aporta ---
         // Only printed when state and clip differ (CHASE→run, IDLE→walk); otherwise it is
         // 20 wasted characters of action bar.
         line.append(" §8│");
@@ -169,7 +135,6 @@ public final class MinotaurAnimDebug {
             line.append(" §7d").append(String.format("%.1f", this.mino.distanceTo(target)));
         }
 
-        // --- cooldown de melee: el hueco de castigo del jugador ---
         if (cortex != null) {
             line.append(" §8│ ").append(meleeCooldown(cortex) > 0
                     ? "§b⏳" + String.format("%.1f", meleeCooldown(cortex) / 20.0F) + "s"
@@ -179,7 +144,6 @@ public final class MinotaurAnimDebug {
         return line.toString();
     }
 
-    /** Misma información que la action bar, en ASCII y con columnas de ancho fijo. */
     private @NotNull String logLine(@NotNull MinotaurState state,
                                     @Nullable BaseAnimation clip,
                                     @Nullable Cortex<MinotaurEntity, MinotaurState> cortex) {
@@ -213,11 +177,6 @@ public final class MinotaurAnimDebug {
         return line.toString();
     }
 
-    /**
-     * Degrees between the body yaw and the direction to the target, signed like {@code sweepAngle}
-     * (positive = target to the mob's left). Every hitbox aims along this yaw, so past half the
-     * sector's arc the attack misses no matter how good the range and cooldown look.
-     */
     private float yawError(LivingEntity target) {
         final double dx = target.getX() - this.mino.getX();
         final double dz = target.getZ() - this.mino.getZ();
@@ -225,7 +184,6 @@ public final class MinotaurAnimDebug {
         return -Mth.degreesDifference(AttackAnchor.bodyYaw(this.mino), toTarget);
     }
 
-    /** Transition line: from, to, how long the outgoing state ran, and the distance right then. */
     private void logTransition(int newStateId) {
         final MinotaurState from = resolve(this.lastStateId);
         final MinotaurState to = resolve(newStateId);
@@ -272,7 +230,6 @@ public final class MinotaurAnimDebug {
         return cortex.context().get(MinotaurCtx.NEXT_MELEE_TIME) - this.mino.level().getGameTime();
     }
 
-    /** Rango de ticks de la ventana de daño, leído de los frame events reales. */
     private static @NotNull String hitRange(@NotNull BaseAnimation clip) {
         final Set<Integer> ticks = clip.getFrameEvents().keySet();
         if (ticks.isEmpty()) {
@@ -287,11 +244,6 @@ public final class MinotaurAnimDebug {
         return min + "-" + max;
     }
 
-    /**
-     * One cell per tick (or per block of ticks when the clip is longer than {@link #MAX_BAR_CELLS}).
-     *
-     * @param colored true for the action bar (§ codes), false for the console
-     */
     private static @NotNull String bar(@NotNull BaseAnimation clip,
                                        char plain, char hitChar, char cursorChar, boolean colored) {
         final int duration = Math.max(1, clip.getDurationTicks());
@@ -303,7 +255,7 @@ public final class MinotaurAnimDebug {
         String lastColor = "";
         for (int cell = 0; cell < cells; cell++) {
             final int from = cell * duration / cells;
-            final int to = (cell + 1) * duration / cells; // exclusivo
+            final int to = (cell + 1) * duration / cells;
 
             boolean hit = false;
             for (int t = from; t < to; t++) {

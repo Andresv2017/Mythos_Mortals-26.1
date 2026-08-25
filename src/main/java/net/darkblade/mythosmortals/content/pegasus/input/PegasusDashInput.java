@@ -13,10 +13,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * The Wind Surge key. Defaults to R — the owl already claims H, and the numpad belongs to the
- * in-game tuners.
- */
 @EventBusSubscriber(modid = MythosMortals.MODID, value = Dist.CLIENT)
 public final class PegasusDashInput {
 

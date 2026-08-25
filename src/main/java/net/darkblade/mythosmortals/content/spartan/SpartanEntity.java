@@ -75,7 +75,6 @@ public class SpartanEntity extends GuardingMeleeEntity {
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8));
         this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
 
-        // Ataca a los Husks por defecto
         this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Husk.class, true));
         this.targetSelector.addGoal(2, new HurtByTargetGoal(this));
     }
@@ -91,7 +90,6 @@ public class SpartanEntity extends GuardingMeleeEntity {
         return 22.0F;
     }
 
-    /** Punish window: a staggered Spartan takes 50% more damage until it recovers. */
     @Override
     public float staggeredDamageMultiplier() {
         return 1.5F;

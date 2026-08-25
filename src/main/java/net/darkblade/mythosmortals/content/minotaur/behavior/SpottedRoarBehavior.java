@@ -8,10 +8,6 @@ import net.darkblade.mythosmortals.content.minotaur.MinotaurState;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Opening roar. Not a TimedAnimationBehavior because the next state is conditional: the charge
- * only follows when the distance is within its run budget, otherwise it chases.
- */
 public class SpottedRoarBehavior implements Behavior<MinotaurEntity, MinotaurState> {
 
     @Override

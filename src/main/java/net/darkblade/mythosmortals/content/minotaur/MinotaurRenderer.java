@@ -14,11 +14,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Renderer for the minotaur, and a worked example of {@link RiderPoseHandler}: any humanoid riding
- * the minotaur is posed with {@link MinotaurRiderPose} and drawn sitting on its back by
- * {@code RiderPassengerLayer}, instead of vanilla's default "stand on top" passenger placement.
- */
 public class MinotaurRenderer extends CustomMobRenderer<MinotaurEntity, MinotaurModel> implements RiderPoseHandler {
     private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(MythosMortals.MODID, "textures/entity/minotaur.png");
 
