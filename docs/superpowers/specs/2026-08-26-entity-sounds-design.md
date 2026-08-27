@@ -158,6 +158,14 @@ posiciones, yaw y el arco del escudo, sin efectos secundarios) y cae a la ruta d
 Claves `subtitles.mythosmortals.*` añadidas al provider `Lang` de `MythosMortalsDatagen`, y
 `en_us.json` regenerado con el run `data`.
 
+## Formato de los samples
+
+Todos los `.ogg` deben ser **mono**. El motor de sonido de Minecraft (OpenAL) sólo aplica
+atenuación por distancia y paneo 3D a fuentes de un canal; un sample estéreo se reproduce plano y
+sin dirección, como si el mob estuviera siempre encima del jugador. Los diez originales venían en
+estéreo 48 kHz y se remezclaron a mono al detectarlo. Cualquier sample nuevo pasa por el mismo
+filtro (`ffmpeg -ac 1`) antes de entrar en `assets/`.
+
 ## Riesgos conocidos
 
 - `fly_sprint` corre a `playbackSpeed(1.2F)`, así que su ciclo efectivo es ~16.8 ticks (0.84 s)
