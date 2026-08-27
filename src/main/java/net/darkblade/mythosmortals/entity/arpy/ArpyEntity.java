@@ -10,6 +10,8 @@ import net.darkblade.deluxelib.entity.AbstractFlyingEntity;
 import net.darkblade.deluxelib.entity.IArmoredEntity;
 import net.darkblade.deluxelib.entity.ai.goal.target.FlyingNearestAttackableTargetGoal;
 import net.minecraft.core.Holder;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -419,6 +421,20 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         return this.animator;
     }
 
+    // Vanilla sound hooks. The ambient timer lives in Mob#baseTick (80-tick interval) and the
+    // hurt one in LivingEntity#playHurtSound; AbstractFlyingEntity overrides aiStep but not
+    // baseTick, so both still fire. Both returned null before, leaving the arpy silent except
+    // for its animations.
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return MythosMortalsSounds.ARPY_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(@NotNull DamageSource source) {
+        return MythosMortalsSounds.ARPY_HURT.get();
+    }
+
     @Override
     public void registerAnimations() {
         StandardAnimation idleGround = new StandardAnimation("idle_ground",
@@ -494,6 +510,14 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         idleFly.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()).volume(0.6F).pitchJitter(0.05F));
         flySprint.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()).volume(0.5F).pitchJitter(0.05F));
         flySprintAngry.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()).volume(0.5F).pitchJitter(0.05F));
+
+        // Ground footsteps. walk is 1.0s = 20 ticks; the talons take weight where the leg bones'
+        // Y drops to 0 — leg2 at 0.0s and leg at 0.5s — so the two contacts are ticks 0 and 10.
+        walk.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_STEP.get()).volume(0.8F).pitchJitter(0.1F));
+        walk.sound(AnimSound.at(10, MythosMortalsSounds.ARPY_STEP.get()).volume(0.8F).pitchJitter(0.1F));
+
+        // The wrench back up out of a dive (0.5s = 10 ticks), PLAY_ONCE so no .once() needed.
+        diveReturn.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_DIVE_RETURN.get()).volume(0.9F));
 
         landing.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_LANDING.get()));
         // The corpse hitting the ground gets the same impact as a controlled landing.

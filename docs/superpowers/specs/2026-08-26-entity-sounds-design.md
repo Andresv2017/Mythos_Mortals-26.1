@@ -153,6 +153,38 @@ posiciones, yaw y el arco del escudo, sin efectos secundarios) y cae a la ruta d
 | `death_ground2` | 48 | `arpy.death` | 0 | |
 | `death_falling` | 21, REPEATING | `arpy.death` | 0 `.once()` | un grito, no uno por vuelta |
 
+## Segunda tanda: hooks vanilla y sonidos que faltaban
+
+Siete samples más, generados aparte. Dos de ellos son mezclas de dos capas cada una: la arpía
+combina una pista de águila (73% de energía en 2–6 kHz) con un grito humano (78% en 300 Hz–2 kHz,
+−5 dB), y el soldado combina un roce de armadura con un aliento de fondo (−6 dB). La pista de
+águila arrancaba 151 ms más tarde que la humana, así que se le recortó la cabeza para que los dos
+ataques coincidan.
+
+Todos recortados a su duración objetivo, con fades de 6/12 ms, remezclados a mono y normalizados
+a pico −0.5 dBFS, que es donde estaba ya el resto. El balance relativo va en código.
+
+| Sonido | Cómo se dispara | Detalle |
+|---|---|---|
+| `soldier.ambient` | `getAmbientSound()` | intervalo vanilla de 80 ticks |
+| `soldier.hurt` | `getHurtSound()` | no suena al bloquear: `hurtServer` sale antes |
+| `soldier.shield_up` | flanco de `isRaisingGuard()` en `aiStep` | vol 0.8 |
+| `arpy.ambient` | `getAmbientSound()` | |
+| `arpy.hurt` | `getHurtSound()` | |
+| `arpy.step` | `AnimSound` en `walk`, ticks 0 y 10 | vol 0.8 |
+| `arpy.dive_return` | `AnimSound` en `dive_attack_return`, frame 0 | vol 0.9 |
+
+`Mob#baseTick` es quien dispara el ambient y ni `GuardingMeleeEntity` ni `AbstractFlyingEntity`
+lo sobrescriben (sólo tocan `aiStep`), así que el hook llega. Antes los tres devolvían `null`.
+
+`isRaisingGuard()` es un **estado** que se mantiene los primeros 6 ticks de la fase de guardia, no
+un evento: consultarlo cada tick dispararía el sonido seis veces por alzada. Se detecta el flanco
+false→true con un campo `wasRaisingGuard`. Es la misma trampa que puso el sonido de bloqueo en la
+animación de guardia.
+
+Contactos de la pisada de la arpía: `walk` dura 1.0 s = 20 ticks y la Y de los huesos `leg`/`leg2`
+baja a 0 en 0.0 s y 0.5 s → ticks 0 y 10.
+
 ## Subtítulos
 
 Claves `subtitles.mythosmortals.*` añadidas al provider `Lang` de `MythosMortalsDatagen`, y

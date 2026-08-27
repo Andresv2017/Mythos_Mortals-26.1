@@ -1,4 +1,10 @@
 {
+  "entity.arpy.ambient": {
+    "subtitle": "subtitles.mythosmortals.entity.arpy.ambient",
+    "sounds": [
+      "mythosmortals:entity/arpy/ambient"
+    ]
+  },
   "entity.arpy.attack": {
     "subtitle": "subtitles.mythosmortals.entity.arpy.attack",
     "sounds": [
@@ -11,16 +17,40 @@
       "mythosmortals:entity/arpy/death"
     ]
   },
+  "entity.arpy.dive_return": {
+    "subtitle": "subtitles.mythosmortals.entity.arpy.dive_return",
+    "sounds": [
+      "mythosmortals:entity/arpy/dive_return"
+    ]
+  },
   "entity.arpy.fly": {
     "subtitle": "subtitles.mythosmortals.entity.arpy.fly",
     "sounds": [
       "mythosmortals:entity/arpy/fly"
     ]
   },
+  "entity.arpy.hurt": {
+    "subtitle": "subtitles.mythosmortals.entity.arpy.hurt",
+    "sounds": [
+      "mythosmortals:entity/arpy/hurt"
+    ]
+  },
   "entity.arpy.landing": {
     "subtitle": "subtitles.mythosmortals.entity.arpy.landing",
     "sounds": [
       "mythosmortals:entity/arpy/landing"
+    ]
+  },
+  "entity.arpy.step": {
+    "subtitle": "subtitles.mythosmortals.entity.arpy.step",
+    "sounds": [
+      "mythosmortals:entity/arpy/step"
+    ]
+  },
+  "entity.soldier.ambient": {
+    "subtitle": "subtitles.mythosmortals.entity.soldier.ambient",
+    "sounds": [
+      "mythosmortals:entity/soldier/ambient"
     ]
   },
   "entity.soldier.attack": {
@@ -47,10 +77,22 @@
       "mythosmortals:entity/soldier/death2"
     ]
   },
+  "entity.soldier.hurt": {
+    "subtitle": "subtitles.mythosmortals.entity.soldier.hurt",
+    "sounds": [
+      "mythosmortals:entity/soldier/hurt"
+    ]
+  },
   "entity.soldier.poise_break": {
     "subtitle": "subtitles.mythosmortals.entity.soldier.poise_break",
     "sounds": [
       "mythosmortals:entity/soldier/poise_break"
+    ]
+  },
+  "entity.soldier.shield_up": {
+    "subtitle": "subtitles.mythosmortals.entity.soldier.shield_up",
+    "sounds": [
+      "mythosmortals:entity/soldier/shield_up"
     ]
   },
   "entity.soldier.step": {

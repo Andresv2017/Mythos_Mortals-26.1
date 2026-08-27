@@ -116,6 +116,13 @@ public final class MythosMortalsDatagen {
             add("subtitles.mythosmortals.entity.soldier.death", "Soldier dies");
             add("subtitles.mythosmortals.entity.soldier.poise_break", "Soldier's guard breaks");
             add("subtitles.mythosmortals.entity.soldier.step", "Footsteps");
+            add("subtitles.mythosmortals.entity.arpy.ambient", "Harpy calls");
+            add("subtitles.mythosmortals.entity.arpy.hurt", "Harpy hurts");
+            add("subtitles.mythosmortals.entity.arpy.step", "Talons scrape");
+            add("subtitles.mythosmortals.entity.arpy.dive_return", "Harpy pulls up");
+            add("subtitles.mythosmortals.entity.soldier.ambient", "Soldier shifts");
+            add("subtitles.mythosmortals.entity.soldier.hurt", "Soldier hurts");
+            add("subtitles.mythosmortals.entity.soldier.shield_up", "Soldier raises shield");
         }
 
         private void bannerPatternNames(String id, String name) {

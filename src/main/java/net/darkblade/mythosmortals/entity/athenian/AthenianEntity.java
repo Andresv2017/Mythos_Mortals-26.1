@@ -15,6 +15,7 @@ import net.darkblade.deluxelib.entity.ai.rotation.SmoothBodyRotationControl;
 import net.darkblade.mythosmortals.entity.SoldierSounds;
 import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -37,6 +38,7 @@ public class AthenianEntity extends GuardingMeleeEntity {
 
     private final MobAnimator<AthenianEntity> animator;
     private boolean nextAttackIsSlice = false;
+    private boolean wasRaisingGuard = false;
 
     public AthenianEntity(EntityType<? extends AthenianEntity> type, Level level) {
         super(type, level);
@@ -95,6 +97,37 @@ public class AthenianEntity extends GuardingMeleeEntity {
         return this.animator;
     }
 
+
+    // Vanilla sound hooks. Mob#baseTick drives the ambient timer (getAmbientSoundInterval() = 80
+    // ticks) and LivingEntity#playHurtSound the hurt one; neither GuardingMeleeEntity nor the mod
+    // overrides baseTick, so both fire normally. Both returned null before, which is why the
+    // soldiers were mute outside of their animations.
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return MythosMortalsSounds.SOLDIER_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(@NotNull DamageSource source) {
+        return MythosMortalsSounds.SOLDIER_HURT.get();
+    }
+
+    // Edge-detect the guard raise. isRaisingGuard() is a state that holds for the first 6 ticks of
+    // the guard phase, not a one-shot, so polling it would fire the sound six times per raise —
+    // the same mistake that put the block sound on the guard animation. Only the false -> true
+    // transition is the gesture of bringing the shield up.
+    @Override
+    public void aiStep() {
+        super.aiStep();
+        if (this.level().isClientSide()) {
+            return;
+        }
+        boolean raising = this.guardGoal != null && this.guardGoal.isRaisingGuard();
+        if (raising && !this.wasRaisingGuard) {
+            SoldierSounds.shieldUp(this);
+        }
+        this.wasRaisingGuard = raising;
+    }
 
     // The shield sound belongs to the hit, not to the pose. GuardingMeleeEntity#hurtServer is
     // where a frontal hit is actually absorbed, and it hardcodes SoundEvents.SHIELD_BLOCK with no

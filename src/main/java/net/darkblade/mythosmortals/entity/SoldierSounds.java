@@ -45,6 +45,17 @@ public final class SoldierSounds {
             1.0F, 0.9F + soldier.getRandom().nextFloat() * 0.2F);
     }
 
+    /**
+     * The shield coming up into guard. Like {@link #blocked}, this is an event rather than a pose,
+     * and it is edge-triggered by the caller: GuardedMeleeAttackGoal#isRaisingGuard() stays true
+     * for the first 6 ticks of the guard phase, so polling it would fire six times per raise.
+     */
+    public static void shieldUp(LivingEntity soldier) {
+        soldier.level().playSound(null, soldier.blockPosition(),
+            MythosMortalsSounds.SOLDIER_SHIELD_UP.get(), soldier.getSoundSource(),
+            0.8F, 0.95F + soldier.getRandom().nextFloat() * 0.1F);
+    }
+
     private SoldierSounds() {
     }
 }

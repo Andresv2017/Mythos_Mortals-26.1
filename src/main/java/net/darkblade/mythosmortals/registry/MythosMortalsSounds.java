@@ -25,6 +25,10 @@ public final class MythosMortalsSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_DEATH   = event("entity.arpy.death");
     public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_FLY     = event("entity.arpy.fly");
     public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_LANDING = event("entity.arpy.landing");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_AMBIENT = event("entity.arpy.ambient");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_HURT    = event("entity.arpy.hurt");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_STEP    = event("entity.arpy.step");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ARPY_DIVE_RETURN = event("entity.arpy.dive_return");
 
     // --- Soldiers (Athenian + Spartan) ---
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_ATTACK      = event("entity.soldier.attack");
@@ -32,6 +36,9 @@ public final class MythosMortalsSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_DEATH1      = event("entity.soldier.death1");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_DEATH2      = event("entity.soldier.death2");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_POISE_BREAK = event("entity.soldier.poise_break");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_AMBIENT     = event("entity.soldier.ambient");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_HURT        = event("entity.soldier.hurt");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_SHIELD_UP   = event("entity.soldier.shield_up");
     /** Three footstep variants behind one event — sounds.json picks one at random per step. */
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_STEP        = event("entity.soldier.step");
 
