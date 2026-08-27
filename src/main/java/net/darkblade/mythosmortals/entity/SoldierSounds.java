@@ -3,11 +3,12 @@ package net.darkblade.mythosmortals.entity;
 import net.darkblade.deluxelib.anim.AnimSound;
 import net.darkblade.deluxelib.anim.BaseAnimation;
 import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
- * Footstep wiring shared by the Athenian and the Spartan. The two mobs keep their own
+ * Sound wiring shared by the Athenian and the Spartan. The two mobs keep their own
  * registerAnimations() because their combat timings diverge, but they run the same rig and the
- * same footstep samples, so the contact frames and this helper are common ground.
+ * same samples, so the contact frames and these helpers are common ground.
  */
 public final class SoldierSounds {
 
@@ -27,6 +28,21 @@ public final class SoldierSounds {
                 .volume(volume)
                 .pitchJitter(0.1F));
         }
+    }
+
+    /**
+     * The shield taking a hit. This is deliberately NOT wired to the guard animation: the guard
+     * cycle restarts every time it wins the animator back — after each swing, and after a stagger
+     * chains into it — so a sound on its first frame trails the hit it was supposed to mark.
+     * The block is an event, not a pose, so it is fired from the entity's hurtServer instead.
+     *
+     * <p>Volume and pitch spread match what GuardingMeleeEntity used for SoundEvents.SHIELD_BLOCK,
+     * so the impact keeps the same weight it had with the vanilla clang.
+     */
+    public static void blocked(LivingEntity soldier) {
+        soldier.level().playSound(null, soldier.blockPosition(),
+            MythosMortalsSounds.SOLDIER_BLOCK.get(), soldier.getSoundSource(),
+            1.0F, 0.9F + soldier.getRandom().nextFloat() * 0.2F);
     }
 
     private SoldierSounds() {

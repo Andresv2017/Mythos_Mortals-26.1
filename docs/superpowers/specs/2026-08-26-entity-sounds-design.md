@@ -28,8 +28,12 @@ Detalles confirmados desensamblando el jar, porque condicionan el diseño:
 4. Lógica de repetición en `tickSounds()`:
    `if (once || !loop.repeats()) { if (cycle != 0) skip; }`.
    Es decir, en una animación `REPEATING` un sonido normal suena **en cada vuelta**, y uno
-   marcado `.once()` suena **sólo en la primera**. Esto es lo que permite que
-   `guard`/`dive_attack`/`death_falling` (todas cíclicas) emitan un único sonido de entrada.
+   marcado `.once()` suena **sólo en la primera**. Esto es lo que permite que `dive_attack` y
+   `death_falling` (ambas cíclicas) emitan un único sonido de entrada.
+6. `restartCycle()` resetea `tick` y `ticksRemaining` pero **no** `elapsedTicks`; sólo
+   `startInternal()` lo pone a cero. Por eso `.once()` aguanta las vueltas de una animación que
+   sigue sonando — pero **no** aguanta que la animación pare y vuelva a arrancar. Una animación
+   que se reentra a menudo (como `guard`) redispara su `.once()` en cada reentrada.
 5. Si `pitch` no se fija explícitamente, se usa `LivingEntity.getVoicePitch()`.
 
 Estado actual del proyecto: no existe `MythosMortalsSounds`, ni `assets/mythosmortals/sounds.json`,
@@ -105,13 +109,34 @@ arrastra se asienta en 2.0 s ≡ 0.0 s → tick 0. El de tick 0 va más flojo po
 | `run` | 10 | `soldier.step` | 0, 5 | vol 1.0 |
 | `guard_left` | 40 | `soldier.step` | 0 (vol 0.45), 30 (vol 0.7) | shuffle lateral |
 | `guard_right` | 40 | `soldier.step` | 0 (vol 0.45), 30 (vol 0.7) | shuffle lateral |
-| `guard` | 40 | `soldier.block` | 0 `.once()` | sólo al alzar escudo |
+| — | — | `soldier.block` | — | no va en ninguna animación, ver abajo |
 | `death` | 43 (At.) / 40 (Es.) | `soldier.death1` | 0 | |
 | `death2` | 40 | `soldier.death2` | 0 | |
 | `guard_break` | 30 | `soldier.poise_break` | 0 | |
 | `guard_break2` | 40 | `soldier.poise_break` | 0 | |
 
 `pitchJitter(0.08F)` en pasos y ataques para que dos soldados juntos no suenen clonados.
+
+#### El sonido de bloqueo no va en una animación
+
+Primero se ató `soldier.block` al frame 0 de `guard` con `.once()`, entendiéndolo como "alzar el
+escudo". Estaba mal por dos razones, y ambas se notaron en cuanto se probó in-game:
+
+1. `guard` reentra constantemente: gana el animador de nuevo tras cada ataque, y `guard_break`
+   encadena a `guard` con `setNextAnimation`. Cada reentrada llama a `startInternal()`, que sí
+   resetea `elapsedTicks`, así que `.once()` vuelve a permitir el disparo. El sonido acababa
+   sonando *después* del golpe que pretendía marcar.
+2. El bloqueo real no es una pose sino un evento, y vive en
+   `GuardingMeleeEntity#hurtServer`, que absorbe el golpe frontal y reproduce
+   `SoundEvents.SHIELD_BLOCK` con un valor hardcodeado y sin hook para sustituirlo. Con el sonido
+   en la animación, el clang vanilla seguía sonando en cada bloqueo.
+
+Ambos mobs sobrescriben `hurtServer` replicando la rama de bloqueo de la librería —
+`applyPoiseDamage(WeaponPoise.forHit(source, this) * blockedPoiseFactor(), source)` y
+`return false` — pero llamando a `SoldierSounds.blocked(this)` en lugar del sonido vanilla, con el
+mismo volumen y la misma dispersión de pitch (1.0F, 0.9 + rand*0.2) que usaba la librería. Los
+golpes no bloqueados delegan en `super`, que reevalúa `isGuardingFrontal` (una función pura: lee
+posiciones, yaw y el arco del escudo, sin efectos secundarios) y cae a la ruta de daño normal.
 
 ### Arpía
 

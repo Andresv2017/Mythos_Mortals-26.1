@@ -7,6 +7,7 @@ import net.darkblade.deluxelib.anim.MobAnimator;
 import net.darkblade.deluxelib.anim.StandardAnimation;
 import net.darkblade.deluxelib.combat.AttackShape;
 import net.darkblade.deluxelib.combat.HitWindow;
+import net.darkblade.deluxelib.combat.WeaponPoise;
 import net.darkblade.deluxelib.entity.GuardingMeleeEntity;
 import net.darkblade.deluxelib.entity.ai.goal.GuardedMeleeAttackGoal;
 import net.darkblade.deluxelib.entity.ai.pathing.DirectionalMoveControl;
@@ -14,6 +15,8 @@ import net.darkblade.deluxelib.entity.ai.rotation.SmoothBodyRotationControl;
 import net.minecraft.world.entity.ai.control.BodyRotationControl;
 import net.darkblade.mythosmortals.entity.SoldierSounds;
 import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -85,6 +88,23 @@ public class SpartanEntity extends GuardingMeleeEntity {
     @Override
     public @NotNull MobAnimator<SpartanEntity> animator() {
         return this.animator;
+    }
+
+
+    // The shield sound belongs to the hit, not to the pose. GuardingMeleeEntity#hurtServer is
+    // where a frontal hit is actually absorbed, and it hardcodes SoundEvents.SHIELD_BLOCK with no
+    // hook to swap it — so the blocked branch is mirrored here to play our own clang instead.
+    // Everything else (the poise damage, cancelling the hit) matches the library exactly, and
+    // unblocked hits fall through to super, which re-checks the guard and then takes the normal
+    // damage path.
+    @Override
+    public boolean hurtServer(@NotNull ServerLevel level, @NotNull DamageSource source, float amount) {
+        if (this.isGuardingFrontal(source.getEntity())) {
+            this.applyPoiseDamage(WeaponPoise.forHit(source, this) * this.blockedPoiseFactor(), source);
+            SoldierSounds.blocked(this);
+            return false;
+        }
+        return super.hurtServer(level, source, amount);
     }
 
     // --- Poise / guard-break tuning (Spartan guards a touch tougher than the Athenian) ---
@@ -178,11 +198,6 @@ public class SpartanEntity extends GuardingMeleeEntity {
         SoldierSounds.steps(guardLeft, 0.7F, 30);
         SoldierSounds.steps(guardRight, 0.45F, 0);
         SoldierSounds.steps(guardRight, 0.7F, 30);
-
-        // Shield-up. guard is REPEATING and a plain sound on a repeating animation fires every
-        // cycle — .once() restricts it to the first, so it marks raising the guard rather than
-        // clanking every 2 seconds while it's held.
-        guard.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_BLOCK.get()).once());
 
         death.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_DEATH1.get()));
         death2.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_DEATH2.get()));
