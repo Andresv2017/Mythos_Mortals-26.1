@@ -2,6 +2,7 @@ package net.darkblade.mythosmortals.entity.arpy;
 
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.mythosmortals.entity.arpy.client.render.ArpyAnimation;
+import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
 import net.darkblade.deluxelib.anim.*;
 import net.darkblade.deluxelib.combat.AttackShape;
 import net.darkblade.deluxelib.combat.HitWindow;
@@ -474,6 +475,35 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         deathFalling.blendInMs(200);
         // Short blend: the fall→impact cut IS the impact — a long crossfade softens it away.
         hitGround.blendInMs(100);
+
+        // --- Sounds ----------------------------------------------------------------------
+        // AnimSound frames are in TICKS (durationTicks = (int)(withLength * 20)). DeluxeLib ticks
+        // these server-side only and broadcasts via Level#playSound, so no client guard is needed.
+        //
+        // dive_attack is REPEATING and a single dive can run for several cycles depending on the
+        // approach distance — a plain sound would re-screech every 20 ticks all the way down.
+        // .once() limits it to the first cycle: one screech per dive.
+        diveAttack.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_ATTACK.get()).pitchJitter(0.06F).once());
+
+        // Wingbeats. take_off gets the full-strength flap; the cruise cycles get a quieter one
+        // every loop, which layers into a continuous wind bed rather than discrete flaps.
+        // Caveat: fly_sprint runs at playbackSpeed 1.2, so its effective cycle is ~16.8 ticks
+        // (0.84s) while fly.ogg is 1.2s — the tails overlap. That reads as wind at volume 0.5,
+        // but if it ever sounds muddy, dropping the two fly_sprint lines is the fix.
+        takeOff.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()));
+        idleFly.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()).volume(0.6F).pitchJitter(0.05F));
+        flySprint.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()).volume(0.5F).pitchJitter(0.05F));
+        flySprintAngry.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_FLY.get()).volume(0.5F).pitchJitter(0.05F));
+
+        landing.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_LANDING.get()));
+        // The corpse hitting the ground gets the same impact as a controlled landing.
+        hitGround.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_LANDING.get()));
+
+        deathGround.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_DEATH.get()));
+        deathGround2.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_DEATH.get()));
+        // death_falling is REPEATING (it loops for as long as the corpse takes to drop) — .once()
+        // so the arpy screams on the way down instead of once per revolution.
+        deathFalling.sound(AnimSound.at(0, MythosMortalsSounds.ARPY_DEATH.get()).once());
 
         // dive_attack is CYCLE at 20 ticks/loop (tick resets to 0 each restartCycle) and isDiving()
         // can stay true for a variable number of loops depending on approach distance/speed — the

@@ -103,6 +103,19 @@ public final class MythosMortalsDatagen {
             bannerPatternNames("athena", "Owl of Athena");
             bannerPatternNames("centaur", "Centaur");
             bannerPatternNames("sparta", "Lambda");
+
+            // Subtitles for the entity sound events (see MythosMortalsSounds and sounds.json).
+            // The soldier family is shared by the Athenian and the Spartan, so the wording stays
+            // generic; both death variants share one subtitle since the player can't tell them apart.
+            add("subtitles.mythosmortals.entity.arpy.attack", "Harpy screeches");
+            add("subtitles.mythosmortals.entity.arpy.death", "Harpy dies");
+            add("subtitles.mythosmortals.entity.arpy.fly", "Harpy flaps");
+            add("subtitles.mythosmortals.entity.arpy.landing", "Harpy lands");
+            add("subtitles.mythosmortals.entity.soldier.attack", "Soldier attacks");
+            add("subtitles.mythosmortals.entity.soldier.block", "Soldier raises shield");
+            add("subtitles.mythosmortals.entity.soldier.death", "Soldier dies");
+            add("subtitles.mythosmortals.entity.soldier.poise_break", "Soldier's guard breaks");
+            add("subtitles.mythosmortals.entity.soldier.step", "Footsteps");
         }
 
         private void bannerPatternNames(String id, String name) {

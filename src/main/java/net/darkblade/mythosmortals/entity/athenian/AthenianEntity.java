@@ -1,5 +1,6 @@
 package net.darkblade.mythosmortals.entity.athenian;
 
+import net.darkblade.deluxelib.anim.AnimSound;
 import net.darkblade.deluxelib.anim.AnimSource;
 import net.darkblade.deluxelib.anim.Loop;
 import net.darkblade.deluxelib.anim.MobAnimator;
@@ -10,7 +11,8 @@ import net.darkblade.deluxelib.entity.GuardingMeleeEntity;
 import net.darkblade.deluxelib.entity.ai.goal.GuardedMeleeAttackGoal;
 import net.darkblade.deluxelib.entity.ai.pathing.DirectionalMoveControl;
 import net.darkblade.deluxelib.entity.ai.rotation.SmoothBodyRotationControl;
-import net.minecraft.sounds.SoundEvents;
+import net.darkblade.mythosmortals.entity.SoldierSounds;
+import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.control.BodyRotationControl;
@@ -161,12 +163,40 @@ public class AthenianEntity extends GuardingMeleeEntity {
                 .invulnerableLastTicks(6).invulnerableTrailTicks(2)
                 .blockAdditive()
                 .hyperArmor()
-                .onFrame(2, e -> e.playSound(SoundEvents.PLAYER_ATTACK_SWEEP, 1.0f, 1.0f));
+                .sound(AnimSound.at(2, MythosMortalsSounds.SOLDIER_ATTACK.get()).pitchJitter(0.08F));
         attackSlice.blendInMs(200).blendOutMs(300)
                 .invulnerableLastTicks(6).invulnerableTrailTicks(2)
                 .blockAdditive()
                 .hyperArmor()
-                .onFrame(4, e -> e.playSound(SoundEvents.PLAYER_ATTACK_SWEEP, 1.0f, 1.0f));
+                .sound(AnimSound.at(4, MythosMortalsSounds.SOLDIER_ATTACK.get()).pitchJitter(0.08F));
+
+        // --- Footsteps -------------------------------------------------------------------
+        // AnimSound frames are in TICKS, and durationTicks = (int)(withLength * 20). Contact
+        // frames come from the waist bone's vertical bob in each clip: the body sits lowest
+        // exactly when a foot takes the weight.
+        //
+        // walk (1.3514s = 27 ticks): waist Y bottoms out at 0.0s and 0.6757s.
+        SoldierSounds.steps(walk, 0.85F, 0, 13);
+        // run (0.5s = 10 ticks): same two-contact cycle at double tempo.
+        SoldierSounds.steps(run, 1.0F, 0, 5);
+        // guard_left / guard_right (2.0s = 40 ticks) are a shielded side-shuffle, not a walk:
+        // the lead foot plants at 1.5s (leg Y = -0.12, waist at its lowest -4.1/-4.22) and the
+        // trailing foot only drags in to settle at 2.0s == 0.0s. The drag is quieter than the
+        // plant, which is what makes it read as a shuffle instead of a march.
+        SoldierSounds.steps(guardLeft, 0.45F, 0);
+        SoldierSounds.steps(guardLeft, 0.7F, 30);
+        SoldierSounds.steps(guardRight, 0.45F, 0);
+        SoldierSounds.steps(guardRight, 0.7F, 30);
+
+        // Shield-up. guard is REPEATING, and a plain sound on a repeating animation fires every
+        // cycle — .once() restricts it to the first, so it marks raising the guard rather than
+        // clanking every 2 seconds while it's held.
+        guard.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_BLOCK.get()).once());
+
+        death.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_DEATH1.get()));
+        death2.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_DEATH2.get()));
+        guardBreak.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_POISE_BREAK.get()));
+        guardBreak2.sound(AnimSound.at(0, MythosMortalsSounds.SOLDIER_POISE_BREAK.get()));
 
         // attack = long thrust: a thin CAPSULE (the spear) whose spearhead segment travels
         // forward across the window (sweepForward) — near targets are pricked before far ones,

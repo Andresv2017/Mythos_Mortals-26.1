@@ -19,6 +19,7 @@ public final class MythosMortalsRegistry {
         MythosMortalsBlocks.BLOCKS.register(bus);
         MythosMortalsBlockEntities.BLOCK_ENTITY_TYPES.register(bus);
         MythosMortalsParticles.PARTICLE_TYPES.register(bus);
+        MythosMortalsSounds.SOUND_EVENTS.register(bus);
         MythosMortalsEffects.MOB_EFFECTS.register(bus);
         MythosMortalsDataComponents.DATA_COMPONENTS.register(bus);
         MythosMortalsRecipes.RECIPE_SERIALIZERS.register(bus);

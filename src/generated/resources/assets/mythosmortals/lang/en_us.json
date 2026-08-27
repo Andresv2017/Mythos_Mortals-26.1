@@ -128,6 +128,15 @@
   "mythosmortals.configuration.section.mythosmortals.common.toml.title": "Mythos & Mortals Configs",
   "mythosmortals.configuration.title": "Mythos & Mortals Configs",
   "pegasus.mythosmortals.not_your_mount": "This pegasus answers to someone else.",
+  "subtitles.mythosmortals.entity.arpy.attack": "Harpy screeches",
+  "subtitles.mythosmortals.entity.arpy.death": "Harpy dies",
+  "subtitles.mythosmortals.entity.arpy.fly": "Harpy flaps",
+  "subtitles.mythosmortals.entity.arpy.landing": "Harpy lands",
+  "subtitles.mythosmortals.entity.soldier.attack": "Soldier attacks",
+  "subtitles.mythosmortals.entity.soldier.block": "Soldier raises shield",
+  "subtitles.mythosmortals.entity.soldier.death": "Soldier dies",
+  "subtitles.mythosmortals.entity.soldier.poise_break": "Soldier's guard breaks",
+  "subtitles.mythosmortals.entity.soldier.step": "Footsteps",
   "tooltip.mythosmortals.marinated": "Marinated in olive oil",
   "tooltip.mythosmortals.marinated.effect": "+2 hunger, +50% saturation"
 }
