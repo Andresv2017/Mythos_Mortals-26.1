@@ -1,5 +1,6 @@
 package net.darkblade.mythosmortals.entity.minotaur;
 
+import net.darkblade.deluxelib.anim.AnimSound;
 import net.darkblade.deluxelib.anim.AnimSource;
 import net.darkblade.deluxelib.anim.Animatable;
 import net.darkblade.deluxelib.anim.Loop;
@@ -29,8 +30,21 @@ import net.darkblade.mythosmortals.entity.minotaur.behavior.PushBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.behavior.SpottedRoarBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.client.render.MinotaurAnimation;
 import net.darkblade.mythosmortals.entity.minotaur.debug.MinotaurAnimDebug;
+import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
+import java.util.UUID;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.BossEvent;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -38,6 +52,8 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -61,12 +77,59 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return control;
     }
 
+    /**
+     * Drives the custom boss bar. The name is never drawn — MinotaurBossBarRenderer cancels
+     * vanilla's rendering, its text included — it exists only as the marker the client matches on
+     * to tell this bar apart from every other one on screen. Colour and overlay go unused for the
+     * same reason, and are set only so the event is well-formed.
+     */
+    private final ServerBossEvent bossEvent = new ServerBossEvent(
+            UUID.randomUUID(),
+            Component.translatable("entity.mythosmortals.minotaur"),
+            BossEvent.BossBarColor.RED,
+            BossEvent.BossBarOverlay.PROGRESS);
+
     @Override
     public void tick() {
         super.tick();
+        if (!this.level().isClientSide()) {
+            this.updateBossBar();
+        }
         if ((MinotaurCtx.DEBUG_ANIM_ACTION_BAR || MinotaurCtx.DEBUG_ANIM_CONSOLE)
                 && !this.level().isClientSide()) {
             this.debug.tick();
+        }
+    }
+
+    /**
+     * Without this the bar would outlive the mob: once the entity is gone {@link #tick()} stops
+     * running, so nothing would ever take the players off the event and the bar would sit on their
+     * screen forever. Covers death, chunk unload and /kill alike.
+     */
+    @Override
+    public void remove(Entity.@NotNull RemovalReason reason) {
+        this.bossEvent.removeAllPlayers();
+        super.remove(reason);
+    }
+
+    /**
+     * Shows the bar to every player inside {@link MinotaurCtx#BOSS_BAR_RADIUS} and takes it away
+     * once they leave. Reconciled every tick rather than driven by a trigger, so walking out of
+     * range, teleporting away or dying all drop the bar without each needing its own hook.
+     */
+    private void updateBossBar() {
+        float max = this.getMaxHealth();
+        this.bossEvent.setProgress(max <= 0.0F ? 0.0F : this.getHealth() / max);
+
+        if (!(this.level() instanceof ServerLevel server)) {
+            return;
+        }
+        for (ServerPlayer player : server.players()) {
+            if (this.distanceToSqr(player) <= MinotaurCtx.BOSS_BAR_RADIUS_SQR) {
+                this.bossEvent.addPlayer(player);
+            } else {
+                this.bossEvent.removePlayer(player);
+            }
         }
     }
 
@@ -245,6 +308,60 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return this.animator;
     }
 
+    // --- Vanilla sound hooks -------------------------------------------------------------
+    // Before this the minotaur made no sound at all — not even a vanilla placeholder. Mob#baseTick
+    // drives the ambient timer (80 ticks) and CortexMonster does not override baseTick, so the
+    // hook lands. Death goes through getDeathSound rather than the death animation because that
+    // clip is still a placeholder (see sinKeyframes); the vanilla hook does not depend on it.
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return MythosMortalsSounds.MINOTAUR_AMBIENT.get();
+    }
+
+    /**
+     * Capped at 0.5s on purpose. invulnerableTime is 20 ticks, but a stronger hit re-triggers after
+     * 10, so a longer sample overlaps itself while the minotaur is being focused down. This
+     * replaces the entity.ravager.hurt stand-in the brief left in place.
+     */
+    @Override
+    protected SoundEvent getHurtSound(@NotNull DamageSource source) {
+        return MythosMortalsSounds.MINOTAUR_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return MythosMortalsSounds.MINOTAUR_DEATH.get();
+    }
+
+    /**
+     * Only to trace the death animation. A dying entity runs tickDeath() in place of aiStep(), so
+     * the normal debug line stops the moment the death starts; without this hook the whole window
+     * we care about is invisible. CortexMonster#tickDeath delegates to the animator, so super still
+     * does all the real work.
+     */
+    @Override
+    protected void tickDeath() {
+        if (!this.level().isClientSide()) {
+            this.debug.tickDeath();
+        }
+        super.tickDeath();
+    }
+
+    /**
+     * Hooves rather than the generic block footstep. entity.ravager.step already is a heavy hoof on
+     * dirt, so it stands in for the sample the brief marked optional. The 0.25 factor is above
+     * vanilla's usual 0.15 for large mobs: this one is boss-scale and its tread should carry.
+     */
+    @Override
+    protected void playStepSound(@NotNull BlockPos pos, @NotNull BlockState blockState) {
+        if (!blockState.getFluidState().isEmpty()) {
+            return;
+        }
+        SoundType soundType = blockState.getSoundType(this.level(), pos, this);
+        this.playSound(SoundEvents.RAVAGER_STEP, soundType.getVolume() * 0.25F, soundType.getPitch() * 0.8F);
+    }
+
     private StandardAnimation sinKeyframes(String name, Loop loop, int priority, float duration) {
         this.debug.markMissing(name);
         return new StandardAnimation(name, new AnimSource(() -> null), loop, 0, priority, duration);
@@ -262,14 +379,20 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         StandardAnimation chargeLoop = sinKeyframes("charge_loop", Loop.REPEATING, 1, 0.5F);
 
         // No hurt clip on purpose: a flinch would read as an interrupt the super armor never gives.
-        StandardAnimation death = sinKeyframes("death", Loop.PLAY_ONCE, 0, 2.0F);
+        StandardAnimation death = new StandardAnimation("death",
+                new AnimSource(() -> MinotaurAnimation.DEATH), Loop.PLAY_ONCE, 0, 0, 2.4583F);
 
         // --- one-shots, played by the behaviors in onEnter ---
         StandardAnimation spotted     = sinKeyframes("target_spotted",      Loop.PLAY_ONCE, 0, 1.0F);
         StandardAnimation horizontal1 = new StandardAnimation("attack_horizontal_1", new AnimSource(() -> MinotaurAnimation.COMBO_A), Loop.PLAY_ONCE, 0, 0, MinotaurCtx.COMBO_CLIP_SECONDS);
         StandardAnimation horizontal2 = new StandardAnimation("attack_horizontal_2", new AnimSource(() -> MinotaurAnimation.COMBO_B), Loop.PLAY_ONCE, 0, 0, MinotaurCtx.COMBO_CLIP_SECONDS);
-        StandardAnimation vertical    = sinKeyframes("attack_vertical",     Loop.PLAY_ONCE, 0, 1.75F);
-        StandardAnimation push        = sinKeyframes("attack_push",         Loop.PLAY_ONCE, 0, 0.6F);
+        // COMBO_C is the overhead finisher. Its impact frame was read off the keyframes: the kinetic
+        // chain peaks body (ticks 13-16) -> top (15-18) -> arm/forearm (16-19), so the axe connects
+        // at 17-20 — which is where the placeholder's hit window already sat, so it carries over.
+        StandardAnimation vertical    = new StandardAnimation("attack_vertical",
+                new AnimSource(() -> MinotaurAnimation.COMBO_C), Loop.PLAY_ONCE, 0, 0, 1.864F);
+        StandardAnimation push        = new StandardAnimation("attack_push",
+                new AnimSource(() -> MinotaurAnimation.FRONT_PUSH), Loop.PLAY_ONCE, 0, 0, 0.9583F);
         StandardAnimation chargeStart = sinKeyframes("charge_start",        Loop.PLAY_ONCE, 0, 0.75F);
         StandardAnimation chargeHit   = sinKeyframes("charge_hit",          Loop.PLAY_ONCE, 0, 0.5F);
         StandardAnimation chargeStun  = sinKeyframes("charge_stun",         Loop.PLAY_ONCE, 0, 2.0F);
@@ -347,6 +470,41 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .knockback(MinotaurCtx.PUSH_KNOCKBACK)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(push);
+
+        // --- sounds, anchored to the same ticks as the hit windows above -------------------
+        // AnimSound frames are in TICKS (durationTicks = (int)(withLength * 20)). DeluxeLib ticks
+        // these server-side only and broadcasts via Level#playSound, so no client guard is needed.
+        //
+        // Most of these hang off animations that are still sinKeyframes placeholders. They tick and
+        // fire frame events all the same — that is the whole premise of ENABLE_UNANIMATED_ATTACKS,
+        // and the hit windows above already rely on it. When the real clips land, re-check the
+        // frames here against them the way the hit-window comment says to.
+
+        // The axe leads the blow: one tick ahead of each window so the whoosh reads as the cause
+        // of the hit rather than its echo. pitchJitter keeps a chained combo from sounding cloned.
+        horizontal1.sound(AnimSound.at(3, MythosMortalsSounds.MINOTAUR_SWING.get()).pitchJitter(0.08F));
+        horizontal2.sound(AnimSound.at(4, MythosMortalsSounds.MINOTAUR_SWING.get()).pitchJitter(0.08F));
+
+        // slam.ogg is front-loaded — the impact is in its first 8 ticks, there is no windup baked
+        // in — so it fires ON the impact frame, not before it. It outlives the 35-tick clip by a
+        // few ticks, which is fine: PLAY_ONCE animations do not restart it.
+        vertical.sound(AnimSound.at(17, MythosMortalsSounds.MINOTAUR_SLAM.get()));
+
+        push.sound(AnimSound.at(0, MythosMortalsSounds.MINOTAUR_PUSH.get()));
+        spotted.sound(AnimSound.at(0, MythosMortalsSounds.MINOTAUR_ROAR.get()));
+
+        // charge_loop is REPEATING at 10 ticks and the sample is 0.499s, so one gallop cycle lands
+        // per animation cycle with no overlap. No .once(): the point is that it keeps running for
+        // as long as the charge does.
+        chargeLoop.sound(AnimSound.at(0, MythosMortalsSounds.MINOTAUR_CHARGE_LOOP.get()));
+
+        // The physical beats of the charge stay vanilla. These are not placeholders standing in for
+        // something better — goat.prepare_ram and goat.ram_impact are literally "horned animal winds
+        // up to ram" and "horned animal connects", and ravager.stunned is the same recoil state
+        // charge_stun models.
+        chargeStart.sound(AnimSound.at(0, SoundEvents.GOAT_PREPARE_RAM).pitch(0.7F));
+        chargeHit.sound(AnimSound.at(0, SoundEvents.GOAT_RAM_IMPACT).pitch(0.7F));
+        chargeStun.sound(AnimSound.at(0, SoundEvents.RAVAGER_STUNNED));
 
         // --- play conditions: the five loops PARTITION the FSM state ---
         //

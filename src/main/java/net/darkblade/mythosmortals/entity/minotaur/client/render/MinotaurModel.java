@@ -1,6 +1,7 @@
 package net.darkblade.mythosmortals.entity.minotaur.client.render;
 import net.darkblade.mythosmortals.core.MythosMortals;
 
+import net.darkblade.deluxelib.anim.MobAnimator;
 import net.darkblade.deluxelib.client.render.DeluxeEntityRenderState;
 import net.darkblade.deluxelib.client.rig.AnimContext;
 import net.darkblade.deluxelib.client.rig.Rig;
@@ -10,6 +11,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.Nullable;
 
 // Mesh made with Blockbench 5.1.5; ported to the DeluxeLib rig pipeline (EntityModel<DeluxeEntityRenderState>).
 public class MinotaurModel extends EntityModel<DeluxeEntityRenderState> {
@@ -26,6 +28,14 @@ public class MinotaurModel extends EntityModel<DeluxeEntityRenderState> {
             .lookAt(m -> m.head, 40f, 30f)
             .build();
 
+    // DEATH hands the axe over at 0.5417s; BaseAnimation runs at 20 ticks/s, so tick 11 is the
+    // frame the held axe vanishes and the dropped one has to take over.
+    private static final String DEATH_ANIM = "death";
+    private static final int AXE_DROP_TICK = 11;
+
+    // The dropped axe bone, shown only once DEATH releases it.
+    private final ModelPart axe2;
+
     // Public seat chain, walked by MinotaurRenderer#applyRiderTransform to place the rider.
     public final ModelPart minotaur;
     public final ModelPart body;
@@ -40,6 +50,7 @@ public class MinotaurModel extends EntityModel<DeluxeEntityRenderState> {
         this.torso = this.body.getChild("torso");
         this.top = this.torso.getChild("top");
         this.head = this.top.getChild("head");
+        this.axe2 = root.getChild("axe2");
     }
 
     public static LayerDefinition createBodyLayer() {
@@ -168,11 +179,45 @@ public class MinotaurModel extends EntityModel<DeluxeEntityRenderState> {
         PartDefinition rightKnee = rightLeg.addOrReplaceChild("rightKnee", CubeListBuilder.create().texOffs(42, 74).addBox(-2.5F, -0.5F, -2.0F, 5.0F, 9.0F, 4.0F, new CubeDeformation(0.0F))
         .texOffs(0, 214).addBox(-2.5F, 5.5F, -2.0F, 5.0F, 3.0F, 4.0F, new CubeDeformation(0.1F)), PartPose.offsetAndRotation(0.2F, 6.5F, 1.5F, 0.0F, 0.0F, -0.0436F));
 
+        // The dropped axe. Same 15 cubes as `axe`, but parented to the root instead of `forearm`:
+        // DEATH lets go of the weapon at 0.5417s, and from there it has to fall in entity space
+        // rather than keep following the arm. Hidden outside that window by #setupAnim.
+        PartDefinition axe2 = partdefinition.addOrReplaceChild("axe2", CubeListBuilder.create().texOffs(163, 213).addBox(-0.9143F, -1.0F, -23.5F, 2.0F, 2.0F, 41.0F, new CubeDeformation(0.0F))
+        .texOffs(244, 228).addBox(-1.4143F, -1.5F, 15.5F, 3.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
+        .texOffs(180, 242).addBox(-1.9143F, -2.0F, -24.5F, 4.0F, 4.0F, 8.0F, new CubeDeformation(0.0F))
+        .texOffs(221, 238).addBox(-0.5143F, -5.0F, -21.5F, 1.0F, 3.0F, 4.0F, new CubeDeformation(0.0F))
+        .texOffs(208, 236).addBox(-0.5143F, -12.0F, -25.5F, 1.0F, 7.0F, 11.0F, new CubeDeformation(0.0F))
+        .texOffs(233, 238).addBox(-0.5143F, 2.0F, -21.5F, 1.0F, 3.0F, 4.0F, new CubeDeformation(0.0F))
+        .texOffs(211, 235).addBox(-0.5143F, -11.0F, -28.5F, 1.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
+        .texOffs(250, 235).addBox(-0.5143F, -8.0F, -28.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+        .texOffs(250, 235).addBox(-0.5143F, -8.0F, -12.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+        .texOffs(250, 235).addBox(-0.5143F, 7.0F, -12.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+        .texOffs(245, 234).addBox(-0.5143F, -11.0F, -14.5F, 1.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
+        .texOffs(211, 241).addBox(-0.5143F, 8.0F, -14.5F, 1.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
+        .texOffs(250, 235).addBox(-0.5143F, 7.0F, -28.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+        .texOffs(232, 236).addBox(-0.5143F, 5.0F, -25.5F, 1.0F, 7.0F, 11.0F, new CubeDeformation(0.0F))
+        .texOffs(245, 241).addBox(-0.5143F, 8.0F, -28.5F, 1.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(-14.0857F, 11.0F, -1.5F));
+
         return LayerDefinition.create(meshdefinition, 256, 256);
     }
 
     @Override
     public void setupAnim(DeluxeEntityRenderState state) {
+        // Blockbench hides the dropped axe with a scaleVec(1,0,0) channel on every clip, but that
+        // does not survive the port: scaleVec is an offset from 1 applied additively and weighted
+        // by the blend, so it only hides fully at weight 1 — the bone would leak through every
+        // 400ms blend and through the sourceless charge clips. Gate the bone instead, the way
+        // PegasusModel does with its reins.
+        this.axe2.visible = droppedAxeVisible(state.animator);
         RIG.apply(state, this, AnimContext.from(state));
+    }
+
+    // Deliberately keyed off the clip's own tick rather than MobAnimator#getCurrentDeathAnimation:
+    // that field is only assigned in the server-side startDeathAnimation, so it reads null on the
+    // client. The animation's play state and tick do arrive through the sync packets. Not checking
+    // isPlaying is also deliberate: the tick holds its final value after the clip stops, which
+    // keeps the axe on the ground for the last frames before the corpse is removed.
+    private static boolean droppedAxeVisible(@Nullable MobAnimator<?> animator) {
+        return animator != null && animator.getAnimationTick(DEATH_ANIM) >= AXE_DROP_TICK;
     }
 }

@@ -123,6 +123,16 @@ public final class MythosMortalsDatagen {
             add("subtitles.mythosmortals.entity.pegasus.take_off", "Pegasus takes off");
             add("subtitles.mythosmortals.entity.pegasus.landing", "Pegasus lands");
             add("subtitles.mythosmortals.entity.pegasus.dash", "Pegasus surges");
+            // The minotaur's hooves, charge windup, impact and stun ride on the vanilla
+            // ravager/goat subtitles; only its voice and its axe are ours.
+            add("subtitles.mythosmortals.entity.minotaur.ambient", "Minotaur snorts");
+            add("subtitles.mythosmortals.entity.minotaur.roar", "Minotaur roars");
+            add("subtitles.mythosmortals.entity.minotaur.death", "Minotaur dies");
+            add("subtitles.mythosmortals.entity.minotaur.hurt", "Minotaur hurts");
+            add("subtitles.mythosmortals.entity.minotaur.swing", "Axe swings");
+            add("subtitles.mythosmortals.entity.minotaur.slam", "Axe slams down");
+            add("subtitles.mythosmortals.entity.minotaur.push", "Minotaur shoves");
+            add("subtitles.mythosmortals.entity.minotaur.charge_loop", "Minotaur charges");
         }
 
         private void bannerPatternNames(String id, String name) {

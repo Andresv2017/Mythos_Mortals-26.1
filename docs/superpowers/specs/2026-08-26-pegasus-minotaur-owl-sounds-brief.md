@@ -105,6 +105,14 @@ a single call with a soft resonant tail, dry close recording, no music, no rever
 tres. La buena noticia es que vanilla tiene dos familias que le sirven casi literalmente: el
 *ravager* (pisada) y la *goat* (preparar y ejecutar la embestida).
 
+> **Corrección al `hurt`.** La duración estaba mal: 0.6 s. `invulnerableTime` son 20 ticks, pero un
+> golpe más fuerte reentra a los 10 (0.5 s), así que un sample más largo se solapa consigo mismo
+> mientras concentras daño en el minotauro. El tope real es **0.5 s**, el mismo que se aplicó al
+> soldado y a la arpía. El prompt original también salía plástico: comparado con sus hermanos
+> estaba muy poco descrito ("a short pained guttural grunt, deep and wet") y apoyado en una textura
+> abstracta, así que el modelo rellenaba. La toma final se generó describiendo la trayectoria
+> sonora completa, al estilo del prompt de `roar`.
+
 > **Aviso sobre los frames.** Ocho de sus trece animaciones son `sinKeyframes(...)` — `AnimSource`
 > a `null`, marcadas con `debug.markMissing`. La animación sigue avanzando en ticks, así que los
 > sonidos dispararían bien, pero los frames de impacto habrá que revisarlos cuando existan los clips
@@ -129,7 +137,7 @@ está también abajo, marcada como opcional.
 |---|---|---|---|
 | `minotaur/ambient.ogg` | **1.5 s** | evento, intervalo vanilla 80 ticks | `A huge bull-like monster breathing and snorting while idle, a deep chesty rumble ending in a wet nostril snort, low frequency and threatening, dry close recording, no music, no reverb, isolated` |
 | `minotaur/roar.ogg` | **1.5 s** | `target_spotted` 20 ticks, PLAY_ONCE | `A massive bull-headed monster roaring in rage, a deep guttural bellow with a bovine lowing core that rises into a distorted shout, enormous chest, dry close recording, no music, no reverb, isolated` |
-| `minotaur/hurt.ogg` | **0.6 s** | evento | `A huge bull-like monster taking a wound, a short pained guttural grunt cut off sharply, deep and wet, dry close recording, no music, no reverb, isolated` |
+| `minotaur/hurt.ogg` | **0.5 s** (era 0.6, corregido) | evento | `A huge bull-like monster taking a wound, a short pained guttural grunt cut off sharply, deep and wet, dry close recording, no music, no reverb, isolated` |
 | `minotaur/death.ogg` | **2.0 s** | `death` 40 ticks | `A massive bull-headed monster dying, a long collapsing bellow falling in pitch into an exhausted wet breath, ending with the thud of a heavy body hitting the ground, dry close recording, no music, no reverb, isolated` |
 | `minotaur/swing.ogg` | **0.8 s** | combo A/B 16 ticks = 0.83 s | `A huge double-headed battle axe swung hard through the air, a deep heavy whoosh with a metallic edge tone, slow and weighty, ending in a sharp snap, dry close recording, no music, no reverb, isolated` |
 | `minotaur/slam.ogg` | **1.2 s** | `attack_vertical` 35 ticks, impacto en tick 17 | `A giant battle axe brought down overhead and smashing into the ground, a heavy whoosh into a massive blunt impact with stone cracking and debris scattering, dry close recording, no music, no reverb, isolated` |

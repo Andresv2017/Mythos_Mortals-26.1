@@ -87,6 +87,37 @@ public final class MinotaurAnimDebug {
         }
     }
 
+    /**
+     * Death trace. Separate from {@link #tick()} because a dying entity runs {@code tickDeath()}
+     * instead of {@code aiStep()}, so the normal per-tick line stops exactly when the death
+     * animation starts — which is the window we need to see.
+     *
+     * <p>Read {@code tick} against {@code dur}: if it stalls below {@code dur} while
+     * {@code deathTime} keeps climbing, something stopped the animation. If {@code layer0} is not
+     * the death clip, another animation took the layer. If {@code deathTime} stops climbing before
+     * {@code dur}, the entity was removed too early.
+     */
+    public void tickDeath() {
+        if (!MinotaurCtx.DEBUG_ANIM_CONSOLE) {
+            return;
+        }
+        final var animator = this.mino.animator();
+        final String name = animator.getCurrentDeathAnimation();
+        final Animation layer0 = animator.getCurrent(0);
+        final Animation dead = name == null ? null : animator.getByName(name);
+        final int dur = dead instanceof BaseAnimation base ? base.getDuration() : -1;
+
+        LOG.info("[mino {}] DEATH deathTime={} anim={} tick={}/{} playing={} layer0={} state={}",
+                this.mino.getId(),
+                this.mino.deathTime,
+                name == null ? "<null>" : name,
+                name == null ? -1 : animator.getAnimationTick(name),
+                dur,
+                name != null && animator.isPlaying(name),
+                layer0 == null ? "-" : layer0.getName(),
+                this.mino.serverState());
+    }
+
     @Nullable
     private BaseAnimation currentClip() {
         final Animation current = this.mino.animator().getCurrent(0);

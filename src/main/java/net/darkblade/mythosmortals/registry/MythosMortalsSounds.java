@@ -30,6 +30,19 @@ public final class MythosMortalsSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> PEGASUS_LANDING   = event("entity.pegasus.landing");
     public static final DeferredHolder<SoundEvent, SoundEvent> PEGASUS_DASH      = event("entity.pegasus.dash");
 
+    // --- Minotaur ---
+    // The physical half of the charge stays on vanilla, which happens to have exact matches:
+    // goat.prepare_ram, goat.ram_impact, ravager.stunned and ravager.step. What is registered here
+    // is the voice and the weapon — the parts no vanilla mob can stand in for. See MinotaurEntity.
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_AMBIENT     = event("entity.minotaur.ambient");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_ROAR        = event("entity.minotaur.roar");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_DEATH       = event("entity.minotaur.death");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_HURT        = event("entity.minotaur.hurt");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_SWING       = event("entity.minotaur.swing");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_SLAM        = event("entity.minotaur.slam");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_PUSH        = event("entity.minotaur.push");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_CHARGE_LOOP = event("entity.minotaur.charge_loop");
+
     // --- Soldiers (Athenian + Spartan) ---
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_ATTACK      = event("entity.soldier.attack");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOLDIER_BLOCK       = event("entity.soldier.block");

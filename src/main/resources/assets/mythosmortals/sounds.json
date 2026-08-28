@@ -47,6 +47,54 @@
       "mythosmortals:entity/arpy/step"
     ]
   },
+  "entity.minotaur.ambient": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.ambient",
+    "sounds": [
+      "mythosmortals:entity/minotaur/ambient"
+    ]
+  },
+  "entity.minotaur.charge_loop": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.charge_loop",
+    "sounds": [
+      "mythosmortals:entity/minotaur/charge_loop"
+    ]
+  },
+  "entity.minotaur.death": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.death",
+    "sounds": [
+      "mythosmortals:entity/minotaur/death"
+    ]
+  },
+  "entity.minotaur.hurt": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.hurt",
+    "sounds": [
+      "mythosmortals:entity/minotaur/hurt"
+    ]
+  },
+  "entity.minotaur.push": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.push",
+    "sounds": [
+      "mythosmortals:entity/minotaur/push"
+    ]
+  },
+  "entity.minotaur.roar": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.roar",
+    "sounds": [
+      "mythosmortals:entity/minotaur/roar"
+    ]
+  },
+  "entity.minotaur.slam": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.slam",
+    "sounds": [
+      "mythosmortals:entity/minotaur/slam"
+    ]
+  },
+  "entity.minotaur.swing": {
+    "subtitle": "subtitles.mythosmortals.entity.minotaur.swing",
+    "sounds": [
+      "mythosmortals:entity/minotaur/swing"
+    ]
+  },
   "entity.pegasus.ambient": {
     "subtitle": "subtitles.mythosmortals.entity.pegasus.ambient",
     "sounds": [

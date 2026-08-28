@@ -38,13 +38,24 @@ public final class MinotaurCtx {
 
     public static final float ATTACK_RANGE = MELEE_RANGE + 1.0F;
 
+    // --- boss bar ---
+
+    /**
+     * Radius within which players are shown the boss bar. Well inside the entity's
+     * clientTrackingRange(10) = 160 blocks, so anyone who sees the bar has the mob loaded.
+     */
+    public static final double BOSS_BAR_RADIUS = 48.0;
+
+    public static final double BOSS_BAR_RADIUS_SQR = BOSS_BAR_RADIUS * BOSS_BAR_RADIUS;
+
     // --- push ---
 
     public static final float PUSH_RANGE = MELEE_RANGE;
 
     public static final float PUSH_CONTACT_RANGE = 2.2F;
 
-    public static final int PUSH_TICKS = 12;
+    /** Matches FRONT_PUSH's clip: 0.9583s * 20 = 19 ticks. Was 12 while the clip was a placeholder. */
+    public static final int PUSH_TICKS = 19;
 
     public static final float PUSH_KNOCKBACK = 2.6F;
 
@@ -58,7 +69,8 @@ public final class MinotaurCtx {
 
     public static final float VERTICAL_RANGE = 3.6F;
     public static final float VERTICAL_CHANCE = 0.35F;
-    public static final int VERTICAL_TICKS = 35;
+    /** Matches COMBO_C's clip: 1.864s * 20 = 37 ticks. Was 35 while the clip was a placeholder. */
+    public static final int VERTICAL_TICKS = 37;
 
     // --- charge ---
 
