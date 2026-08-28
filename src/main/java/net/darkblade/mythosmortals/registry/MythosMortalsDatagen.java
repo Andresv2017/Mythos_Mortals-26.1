@@ -70,9 +70,6 @@ public final class MythosMortalsDatagen {
 
             add(MythosMortalsBlocks.OLIVE_CHEST_BOAT_ITEM.get(), "Olive Boat with Chest");
 
-            // The entity is "Athenian Warrior", so its egg gets the full name rather than the
-            // "Athenian" that humanize() would derive from the registry path. Vanilla's convention
-            // is "<entity name> Spawn Egg" and the other five already match it.
             add(MythosMortalsItems.ATHENIAN_SPAWN_EGG.get(), "Athenian Warrior Spawn Egg");
 
             autoItemNames(MythosMortalsItems.ITEMS);
@@ -128,8 +125,6 @@ public final class MythosMortalsDatagen {
             add("subtitles.mythosmortals.entity.pegasus.take_off", "Pegasus takes off");
             add("subtitles.mythosmortals.entity.pegasus.landing", "Pegasus lands");
             add("subtitles.mythosmortals.entity.pegasus.dash", "Pegasus surges");
-            // The minotaur's hooves, charge windup, impact and stun ride on the vanilla
-            // ravager/goat subtitles; only its voice and its axe are ours.
             add("subtitles.mythosmortals.entity.minotaur.ambient", "Minotaur snorts");
             add("subtitles.mythosmortals.entity.minotaur.roar", "Minotaur roars");
             add("subtitles.mythosmortals.entity.minotaur.death", "Minotaur dies");

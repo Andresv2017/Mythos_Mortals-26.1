@@ -34,17 +34,11 @@ public final class MythosMortalsCommonEvents {
 
     @SubscribeEvent
     public static void onRegisterSpawnPlacements(RegisterSpawnPlacementsEvent event) {
-        // AND on top of the biome list: high ground with the sky overhead, so a pegasus never
-        // generates inside a cave system that happens to run under a mountain biome.
         event.register(MythosMortalsEntities.PEGASUS.get(), SpawnPlacementTypes.ON_GROUND,
             Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
             PegasusEntity::checkPegasusSpawnRules,
             RegisterSpawnPlacementsEvent.Operation.AND);
 
-        // The athenian has had a biome spawn entry since it was written, but no placement — the
-        // server logged an error about it the moment the spawn datagen started producing its
-        // biome modifier. Solid ground and nothing else, so this only silences the error rather
-        // than quietly imposing a darkness rule the mob never asked for.
         event.register(MythosMortalsEntities.ATHENIAN.get(), SpawnPlacementTypes.ON_GROUND,
             Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
             (type, level, reason, pos, random) -> true,

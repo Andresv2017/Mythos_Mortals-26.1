@@ -164,10 +164,6 @@ public final class MythosMortalsItems {
     }
 
     // --- Spawn eggs ----------------------------------------------------------------------
-    // 26.1: SpawnEggItem no longer takes the EntityType (or the two tint colours) in its
-    // constructor — it reads the type from a data component that Item.Properties#spawnEgg sets.
-    // The textures are hand-drawn per mob rather than the vanilla tinted template, so no colours
-    // are involved at all. Entity types register before items, so .get() here is safe.
     public static final DeferredItem<SpawnEggItem> ARPY_SPAWN_EGG =
         spawnEgg("arpy", MythosMortalsEntities.ARPY);
     public static final DeferredItem<SpawnEggItem> ATHENIAN_SPAWN_EGG =
