@@ -14,6 +14,7 @@ import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
+import net.minecraft.world.level.storage.loot.functions.SetItemDamageFunction;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
@@ -26,9 +27,6 @@ public final class MythosMortalsDatagen {
     private MythosMortalsDatagen() {
         ;;
     }
-
-    // 26.1: GatherDataEvent is abstract — you must register listeners for its concrete Client/Server
-    // subclasses (each fires only for that data-gen run), not the base event.
 
     public static void gatherClientData(GatherDataEvent.Client event) {
         DataGenerator generator = event.getGenerator();
@@ -104,9 +102,6 @@ public final class MythosMortalsDatagen {
             bannerPatternNames("centaur", "Centaur");
             bannerPatternNames("sparta", "Lambda");
 
-            // Subtitles for the entity sound events (see MythosMortalsSounds and sounds.json).
-            // The soldier family is shared by the Athenian and the Spartan, so the wording stays
-            // generic; both death variants share one subtitle since the player can't tell them apart.
             add("subtitles.mythosmortals.entity.arpy.attack", "Harpy screeches");
             add("subtitles.mythosmortals.entity.arpy.death", "Harpy dies");
             add("subtitles.mythosmortals.entity.arpy.fly", "Harpy flaps");
@@ -123,6 +118,11 @@ public final class MythosMortalsDatagen {
             add("subtitles.mythosmortals.entity.soldier.ambient", "Soldier shifts");
             add("subtitles.mythosmortals.entity.soldier.hurt", "Soldier hurts");
             add("subtitles.mythosmortals.entity.soldier.shield_up", "Soldier raises shield");
+            add("subtitles.mythosmortals.entity.pegasus.ambient", "Pegasus whinnies");
+            add("subtitles.mythosmortals.entity.pegasus.wing_flap", "Pegasus flaps");
+            add("subtitles.mythosmortals.entity.pegasus.take_off", "Pegasus takes off");
+            add("subtitles.mythosmortals.entity.pegasus.landing", "Pegasus lands");
+            add("subtitles.mythosmortals.entity.pegasus.dash", "Pegasus surges");
         }
 
         private void bannerPatternNames(String id, String name) {
@@ -168,7 +168,23 @@ public final class MythosMortalsDatagen {
                     .setRolls(ConstantValue.exactly(1))
                     .add(LootItem.lootTableItem(Items.BONE)
                         .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 2))))
-                    .when(LootItemRandomChanceCondition.randomChance(0.5f))));
+                    .when(LootItemRandomChanceCondition.randomChance(0.5f)))
+                .withPool(LootPool.lootPool()
+                    .setRolls(ConstantValue.exactly(1))
+                    .add(LootItem.lootTableItem(MythosMortalsItems.DORI_SPEAR.get())
+                        .apply(SetItemDamageFunction.setDamage(UniformGenerator.between(0.15f, 0.5f))))
+                    .add(LootItem.lootTableItem(MythosMortalsItems.ATHENIAN_HELMET.get())
+                        .apply(SetItemDamageFunction.setDamage(UniformGenerator.between(0.15f, 0.5f))))
+                    .when(LootItemRandomChanceCondition.randomChance(0.25f))));
+
+            add(MythosMortalsEntities.SPARTAN.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                    .setRolls(ConstantValue.exactly(1))
+                    .add(LootItem.lootTableItem(MythosMortalsItems.XIFOS_SWORD.get())
+                        .apply(SetItemDamageFunction.setDamage(UniformGenerator.between(0.15f, 0.5f))))
+                    .add(LootItem.lootTableItem(MythosMortalsItems.SPARTAN_HELMET.get())
+                        .apply(SetItemDamageFunction.setDamage(UniformGenerator.between(0.15f, 0.5f))))
+                    .when(LootItemRandomChanceCondition.randomChance(0.25f))));
 
             add(MythosMortalsEntities.ARPY.get(), LootTable.lootTable()
                 .withPool(LootPool.lootPool()
@@ -180,7 +196,8 @@ public final class MythosMortalsDatagen {
             add(MythosMortalsEntities.MINOTAUR.get(), LootTable.lootTable()
                 .withPool(LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1))
-                    .add(LootItem.lootTableItem(MythosMortalsItems.GREEK_BRONZE_CORE.get()))));
+                    .add(LootItem.lootTableItem(MythosMortalsItems.GREEK_BRONZE_CORE.get()))
+                    .add(LootItem.lootTableItem(MythosMortalsItems.ATHENA_BRIDLE.get()))));
         }
     }
 

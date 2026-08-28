@@ -20,8 +20,19 @@ public final class PegasusFlightController {
     private static final float LEVEL_PITCH_DEADZONE = 8.0F;
     private static final double HOVER_DAMPING = 0.55;
 
-    public static final double DASH_IMPULSE = 1.8;
+    // The dash writes into the same deltaMovement that travel() clamps to MAX_SPEED every tick, so
+    // an impulse on its own is erased before it can express itself: sprint cruise already sits at
+    // ~1.375 (FORWARD_ACCEL * SPRINT_MULTIPLIER against DRAG), and clamping the impulse to 1.6 left
+    // a 16% bump that DRAG ate within a few ticks. That is why the dash "did nothing". The fix is a
+    // boost window that raises the ceiling for as long as the lunge lasts, then decays back into
+    // normal flight instead of being cut off.
+    public static final double DASH_IMPULSE = 2.4;
     public static final int DASH_COOLDOWN_TICKS = 100;
+    /** Ticks the raised speed ceiling lasts. Also the window in which the dash deals damage. */
+    public static final int DASH_BOOST_TICKS = 12;
+    private static final double DASH_MAX_SPEED = 3.4;
+    public static final float DASH_DAMAGE = 8.0F;
+    public static final double DASH_KNOCKBACK = 1.1;
 
     public static Input riderInput(Player rider) {
         return rider instanceof ServerPlayer server ? server.getLastClientInput() : PegasusClientInput.of(rider);
@@ -59,12 +70,27 @@ public final class PegasusFlightController {
         }
 
         motion = motion.scale(DRAG);
-        if (motion.length() > MAX_SPEED) {
-            motion = motion.normalize().scale(MAX_SPEED);
+        double cap = speedCap(pegasus);
+        if (motion.length() > cap) {
+            motion = motion.normalize().scale(cap);
         }
 
         pegasus.setDeltaMovement(motion);
         pegasus.move(MoverType.SELF, motion);
+    }
+
+    /**
+     * Normal flight is capped at {@link #MAX_SPEED}; a dash raises the ceiling and lets it fall back
+     * over {@link #DASH_BOOST_TICKS}, so the lunge decays into ordinary flight rather than hitting a
+     * wall. The window is derived from the synced dash cooldown rather than a private field, so the
+     * client predicts the same ceiling the server enforces and the dash does not rubber-band.
+     */
+    private static double speedCap(PegasusEntity pegasus) {
+        int boost = pegasus.dashBoostTicks();
+        if (boost <= 0) {
+            return MAX_SPEED;
+        }
+        return MAX_SPEED + (DASH_MAX_SPEED - MAX_SPEED) * (boost / (double) DASH_BOOST_TICKS);
     }
 
     private static Vec3 flightVector(Player rider) {
@@ -76,10 +102,20 @@ public final class PegasusFlightController {
         return flat.lengthSqr() < 1.0E-4 ? look : flat.normalize();
     }
 
+    /**
+     * Adds the lunge to the current velocity. Only ever called on the side that owns the mount's
+     * movement — see {@code PegasusEntity#applyDashImpulse}.
+     *
+     * <p>Deliberately does NOT set {@code hurtMarked}. On the server that flag makes ServerEntity
+     * broadcast a ClientboundSetEntityMotionPacket to everyone tracking the entity <em>and the
+     * rider</em>, carrying the server's own velocity — which for a ridden mount is zero, because
+     * {@code LivingEntity#travelRidden} zeroes it every tick when {@code canSimulateMovement()} is
+     * false. The rider's client would then {@code lerpMotion(0,0,0)} and kill its own dash one to
+     * three ticks in, which is exactly what the trace showed it doing.
+     */
     public static void applyDash(PegasusEntity pegasus, Player rider) {
         Vec3 look = rider.getLookAngle().normalize();
         pegasus.setDeltaMovement(pegasus.getDeltaMovement().add(look.scale(DASH_IMPULSE)));
-        pegasus.hurtMarked = true;
     }
 
     private PegasusFlightController() {}

@@ -9,6 +9,7 @@ import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
@@ -28,6 +29,22 @@ public class DoriSpearItem extends ThrownWeaponItem {
                 new AttributeModifier(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "reach.dori_spear"), 1.5, AttributeModifier.Operation.ADD_VALUE),
                 EquipmentSlotGroup.MAINHAND)
             .build();
+    }
+
+
+    @Override
+    public boolean releaseUsing(ItemStack stack, Level level, LivingEntity entity, int remainingTime) {
+        if (level.isClientSide()) {
+            return super.releaseUsing(stack, level, entity, remainingTime);
+        }
+        boolean willThrow = this.getUseDuration(stack, entity) - remainingTime >= this.throwThresholdTicks();
+        if (willThrow && stack.nextDamageWillBreak()) {
+            return false;
+        }
+        if (willThrow && entity instanceof Player player) {
+            stack.hurtWithoutBreaking(1, player);
+        }
+        return super.releaseUsing(stack, level, entity, remainingTime);
     }
 
     @Override

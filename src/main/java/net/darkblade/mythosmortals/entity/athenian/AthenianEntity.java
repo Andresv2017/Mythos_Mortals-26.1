@@ -46,8 +46,6 @@ public class AthenianEntity extends GuardingMeleeEntity {
         this.moveControl = new DirectionalMoveControl<>(this).setTurnSpeed(7.0F).setCombatTurnSpeed(50.0F);
     }
 
-    // 26.1: Mob#bodyRotationControl is private/final; supply a custom control by overriding
-    // createBodyControl (called from Mob's constructor) instead of assigning the field.
     @Override
     protected @NotNull BodyRotationControl createBodyControl() {
         return new SmoothBodyRotationControl<>(this);
@@ -60,15 +58,12 @@ public class AthenianEntity extends GuardingMeleeEntity {
             .add(Attributes.MOVEMENT_SPEED, 0.22)
             .add(Attributes.ATTACK_DAMAGE, 5.0)
             .add(Attributes.ARMOR, 4.0)
-            .add(Attributes.STEP_HEIGHT, 1.0);   // 26.1: step height is an attribute, was setMaxUpStep(1.0F)
+            .add(Attributes.STEP_HEIGHT, 1.0);
     }
 
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        // Note: no StaggerGoal here — the guard goal freezes itself while staggered (holding the
-        // guard phase) so recovery flows straight back into the guard cycle. StaggerGoal stays for
-        // future non-guarding staggerable mobs.
         this.guardGoal = new GuardedMeleeAttackGoal(this, 1.8)
             .reach(3.0F)
             .guardDistance(6.0F)
@@ -88,8 +83,9 @@ public class AthenianEntity extends GuardingMeleeEntity {
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8));
         this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
 
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Husk.class, true));
-        this.targetSelector.addGoal(2, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
+        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Husk.class, true));
     }
 
     @Override

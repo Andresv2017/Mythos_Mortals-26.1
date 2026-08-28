@@ -3,6 +3,7 @@ package net.darkblade.mythosmortals.entity.pegasus.client.input;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.darkblade.mythosmortals.core.MythosMortals;
 import net.darkblade.mythosmortals.entity.pegasus.PegasusEntity;
+import net.darkblade.mythosmortals.entity.pegasus.debug.PegasusDashDebug;
 import net.darkblade.mythosmortals.entity.pegasus.network.PegasusDashServerPacket;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -28,8 +29,12 @@ public final class PegasusDashInput {
             return;
         }
         while (DASH_KEY.consumeClick()) {
-            if (mc.player.getVehicle() instanceof PegasusEntity pegasus
-                    && pegasus.getControllingPassenger() == mc.player) {
+            if (!(mc.player.getVehicle() instanceof PegasusEntity pegasus)) {
+                continue;
+            }
+            PegasusDashDebug.gate(pegasus, mc.player);
+            if (pegasus.canDash(mc.player)) {
+                pegasus.applyDashImpulse(mc.player);
                 MythosMortals.NETWORK.sendToServer(new PegasusDashServerPacket(pegasus.getId()));
             }
         }

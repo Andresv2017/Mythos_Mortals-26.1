@@ -20,6 +20,13 @@ public final class PegasusCommands {
                                     boolean enabled = PegasusFlightDebug.toggle();
                                     ctx.getSource().sendSuccess(() -> PegasusFlightDebug.helpMessage(enabled), false);
                                     return 1;
+                                }))
+                        .then(Commands.literal("pegasusdash")
+                                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                                .executes(ctx -> {
+                                    boolean enabled = PegasusDashDebug.toggle();
+                                    ctx.getSource().sendSuccess(() -> PegasusDashDebug.helpMessage(enabled), false);
+                                    return 1;
                                 }))));
     }
 

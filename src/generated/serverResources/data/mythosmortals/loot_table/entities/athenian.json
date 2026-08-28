@@ -27,6 +27,48 @@
         }
       ],
       "rolls": 1.0
+    },
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "chance": 0.25,
+          "condition": "minecraft:random_chance"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "add": false,
+              "damage": {
+                "type": "minecraft:uniform",
+                "max": 0.5,
+                "min": 0.15
+              },
+              "function": "minecraft:set_damage"
+            }
+          ],
+          "name": "mythosmortals:dori_spear"
+        },
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "add": false,
+              "damage": {
+                "type": "minecraft:uniform",
+                "max": 0.5,
+                "min": 0.15
+              },
+              "function": "minecraft:set_damage"
+            }
+          ],
+          "name": "mythosmortals:athenian_helmet"
+        }
+      ],
+      "rolls": 1.0
     }
   ],
   "random_sequence": "mythosmortals:entities/athenian"

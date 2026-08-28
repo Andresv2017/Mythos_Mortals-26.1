@@ -215,8 +215,9 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
 
-        this.targetSelector.addGoal(1, new FlyingNearestAttackableTargetGoal<>(this, Cow.class, true, 20.0));
-        this.targetSelector.addGoal(2, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(2, new FlyingNearestAttackableTargetGoal<>(this, Player.class, true, 20.0));
+        this.targetSelector.addGoal(3, new FlyingNearestAttackableTargetGoal<>(this, Cow.class, true, 20.0));
     }
 
     private class ArpyTakeoffGoal extends TakeoffGoal {

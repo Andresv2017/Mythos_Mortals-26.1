@@ -31,7 +31,7 @@ public final class PegasusDashServerPacket extends AbstractNetworkPacket<Pegasus
         }
         Entity entity = context.level.getEntity(this.pegasusId);
         if (entity instanceof PegasusEntity pegasus && context.player.getVehicle() == pegasus) {
-            pegasus.tryDash(context.player);
+            pegasus.dashDebug().packet(pegasus.tryDash(context.player));
         }
     }
 

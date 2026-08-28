@@ -1,4 +1,48 @@
 {
   "type": "minecraft:entity",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "chance": 0.25,
+          "condition": "minecraft:random_chance"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "add": false,
+              "damage": {
+                "type": "minecraft:uniform",
+                "max": 0.5,
+                "min": 0.15
+              },
+              "function": "minecraft:set_damage"
+            }
+          ],
+          "name": "mythosmortals:xifos_sword"
+        },
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "add": false,
+              "damage": {
+                "type": "minecraft:uniform",
+                "max": 0.5,
+                "min": 0.15
+              },
+              "function": "minecraft:set_damage"
+            }
+          ],
+          "name": "mythosmortals:spartan_helmet"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
   "random_sequence": "mythosmortals:entities/spartan"
 }

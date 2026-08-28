@@ -1,5 +1,6 @@
 package net.darkblade.mythosmortals.entity.pegasus;
 
+import net.darkblade.deluxelib.anim.AnimSound;
 import net.darkblade.deluxelib.anim.AnimSource;
 import net.darkblade.deluxelib.anim.Animatable;
 import net.darkblade.deluxelib.anim.Loop;
@@ -10,8 +11,11 @@ import net.darkblade.deluxelib.entity.AbstractFlyingEntity;
 import net.darkblade.deluxelib.vfx.ParticleFx;
 import net.darkblade.mythosmortals.entity.pegasus.menu.PegasusInventoryMenu;
 import net.darkblade.mythosmortals.registry.MythosMortalsItems;
+import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
 import net.darkblade.mythosmortals.entity.pegasus.client.render.PegasusAnimation;
+import net.darkblade.mythosmortals.entity.pegasus.debug.PegasusDashDebug;
 import net.darkblade.mythosmortals.entity.pegasus.debug.PegasusFlightDebug;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -19,9 +23,11 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
@@ -43,14 +49,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class PegasusEntity extends AbstractFlyingEntity implements Animatable<PegasusEntity> {
@@ -91,8 +103,11 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     public static final float WALK_SPEED = 0.015F;
     public static final float FLY_MOVE_SPEED = 0.08F;
 
+    private static final int SPRINT_WHOOSH_COOLDOWN_TICKS = 30;
+
     private final MobAnimator<PegasusEntity> animator = new MobAnimator<>(this);
     private final PegasusFlightDebug flightDebug = new PegasusFlightDebug(this);
+    private final PegasusDashDebug dashDebug = new PegasusDashDebug(this);
     private final PegasusTaming taming = new PegasusTaming();
     private final PegasusEquipment equipment = new PegasusEquipment(this);
 
@@ -117,6 +132,11 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
 
     @Nullable Vec3 glideTarget;
     private int phaseTicks;
+
+    private final Set<Integer> dashHits = new HashSet<>();
+    private boolean wasSprinting;
+    private int sprintWhooshCooldown;
+    private int localDashBoost;
 
     public PegasusEntity(EntityType<? extends PegasusEntity> type, Level level) {
         super(type, level);
@@ -195,6 +215,13 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         return this.entityData.get(DATA_DASH_COOLDOWN);
     }
 
+
+    public int dashBoostTicks() {
+        int elapsed = PegasusFlightController.DASH_COOLDOWN_TICKS - PegasusFlightController.DASH_BOOST_TICKS;
+        int fromCooldown = Math.max(0, this.dashCooldown() - elapsed);
+        return Math.max(fromCooldown, this.localDashBoost);
+    }
+
     public PegasusEquipment equipment() {
         return this.equipment;
     }
@@ -261,8 +288,6 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new BoltFromPlayerGoal());
 
-        // Every autonomous goal stands down while someone is aboard: during the ritual and under a
-        // rider the pegasus is driven directly, and a wander target would fight that.
         this.goalSelector.addGoal(2, new TakeoffGoal() {
             @Override
             public boolean canUse() {
@@ -404,6 +429,14 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             this.prevFlightPitch = Mth.clamp(this.prevFlightPitch, -RIDDEN_MAX_PITCH, RIDDEN_MAX_PITCH);
         }
 
+        // Both sides: the rider's client runs the flight maths to move the vehicle it owns, so it
+        // needs to count down its own boost window or it would clamp the lunge away locally.
+        if (this.localDashBoost > 0) {
+            this.localDashBoost--;
+        }
+        // Traced on both sides — the whole point is comparing them. Costs nothing while off.
+        this.dashDebug.tick();
+
         if (this.level().isClientSide()) {
             return;
         }
@@ -419,6 +452,14 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         int cooldown = this.entityData.get(DATA_DASH_COOLDOWN);
         if (cooldown > 0) {
             this.entityData.set(DATA_DASH_COOLDOWN, cooldown - 1);
+        }
+        if (this.sprintWhooshCooldown > 0) {
+            this.sprintWhooshCooldown--;
+        }
+        // Damage rides the same window as the raised speed ceiling: while the lunge lasts, the
+        // pegasus is a battering ram.
+        if (this.dashBoostTicks() > 0) {
+            this.tickDashAttack();
         }
 
         // TakeoffGoal and LandingGoal are what normally end those two phases, and both stand down
@@ -911,11 +952,6 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     protected void tickRidden(@NotNull Player player, @NotNull Vec3 travelVector) {
         super.tickRidden(player, travelVector);
 
-        // In the air the body swings into the turn rather than snapping onto the rider's look. The
-        // flight direction still comes straight from where they are looking, so steering stays
-        // immediate — it is only the two-metre animal that takes a moment to come round, which is
-        // what the banking roll needs in order to read. On the ground the body yaw *is* the steering,
-        // so there it follows exactly.
         float yaw = this.isFlying()
                 ? Mth.approachDegrees(this.getYRot(), player.getYRot(), RIDDEN_YAW_TURN_SPEED)
                 : player.getYRot();
@@ -926,8 +962,16 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
             return;
         }
         var input = PegasusFlightController.riderInput(player);
-        // Synced through the vanilla shared flags, which is what the second-gear animations read.
-        this.setSprinting(input.sprint() && input.forward());
+        boolean sprinting = input.sprint() && input.forward();
+
+        if (sprinting && !this.wasSprinting && this.sprintWhooshCooldown <= 0) {
+            this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                    MythosMortalsSounds.PEGASUS_DASH.get(), SoundSource.NEUTRAL, 0.55F, 1.15F);
+            this.sprintWhooshCooldown = SPRINT_WHOOSH_COOLDOWN_TICKS;
+        }
+        this.wasSprinting = sprinting;
+
+        this.setSprinting(sprinting);
 
         if (!this.isFlying() && !this.isTakingOff() && input.jump() && this.hasBridle()) {
             this.beginTakeoff();
@@ -942,9 +986,6 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
 
     @Override
     public void travel(@NotNull Vec3 input) {
-        // Deliberately not excluding the take-off: the rider flies through it. Locking control out
-        // for the length of the animation and handing it back all at once is what made lifting off
-        // read as a jolt rather than a climb.
         if (this.isFlying() && !this.isLanding()
                 && this.getControllingPassenger() instanceof Player rider) {
             PegasusFlightController.travel(this, rider);
@@ -967,20 +1008,58 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         return (float) this.getAttributeValue(Attributes.MOVEMENT_SPEED);
     }
 
+    public boolean canDash(Player rider) {
+        return this.isTamed() && this.hasBridle() && this.isFlying()
+                && this.getControllingPassenger() == rider
+                && this.dashCooldown() <= 0
+                && this.dashBoostTicks() <= 0;
+    }
+
+    public void applyDashImpulse(Player rider) {
+        Vec3 before = this.getDeltaMovement();
+        if (this.canSimulateMovement()) {
+            PegasusFlightController.applyDash(this, rider);
+        }
+        this.localDashBoost = PegasusFlightController.DASH_BOOST_TICKS;
+        this.dashDebug.impulse(before, this.getDeltaMovement(), rider.getLookAngle());
+    }
+
+    public PegasusDashDebug dashDebug() {
+        return this.dashDebug;
+    }
+
     public boolean tryDash(Player rider) {
-        if (!this.isTamed() || !this.hasBridle() || !this.isFlying()
-                || this.getControllingPassenger() != rider
-                || this.dashCooldown() > 0) {
+        if (!this.canDash(rider)) {
             return false;
         }
-        PegasusFlightController.applyDash(this, rider);
+        this.applyDashImpulse(rider);
         this.entityData.set(DATA_DASH_COOLDOWN, PegasusFlightController.DASH_COOLDOWN_TICKS);
+        this.dashHits.clear();
         this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                SoundEvents.BREEZE_WIND_CHARGE_BURST, SoundSource.NEUTRAL, 1.0F, 1.2F);
+                MythosMortalsSounds.PEGASUS_DASH.get(), SoundSource.NEUTRAL, 1.0F, 1.0F);
         if (this.level() instanceof ServerLevel server) {
             ParticleFx.burst(server, ParticleTypes.CLOUD, this.position(), 16, 1.0, 0.08);
         }
         return true;
+    }
+
+    private void tickDashAttack() {
+        Vec3 heading = this.getControllingPassenger() instanceof Player rider
+                ? rider.getLookAngle().normalize()
+                : this.getLookAngle();
+        AABB reach = this.getBoundingBox().inflate(0.8, 0.4, 0.8).move(heading.scale(0.9));
+
+        for (LivingEntity victim : this.level().getEntitiesOfClass(LivingEntity.class, reach,
+                t -> t != this && t.isAlive() && !this.hasPassenger(t) && !this.dashHits.contains(t.getId()))) {
+            this.dashHits.add(victim.getId());
+            if (this.level() instanceof ServerLevel server) {
+                victim.hurtServer(server, this.damageSources().mobAttack(this),
+                        PegasusFlightController.DASH_DAMAGE);
+            }
+            victim.push(heading.x * PegasusFlightController.DASH_KNOCKBACK, 0.45,
+                    heading.z * PegasusFlightController.DASH_KNOCKBACK);
+            victim.hurtMarked = true;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -995,7 +1074,6 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     @Override
     public boolean hurtServer(@NotNull ServerLevel level, @NotNull net.minecraft.world.damagesource.DamageSource source, float amount) {
         boolean hurt = super.hurtServer(level, source, amount);
-        // Being struck is one more reason to leave. It never fights back.
         if (hurt && !this.escaping && this.tameState() == PegasusTameState.WILD && this.isAlive()) {
             this.beginEscape(source.getEntity() instanceof Player attacker ? attacker : null);
         }
@@ -1039,6 +1117,42 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
     }
 
     @Override
+    protected SoundEvent getAmbientSound() {
+        return MythosMortalsSounds.PEGASUS_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(@NotNull DamageSource source) {
+        return SoundEvents.HORSE_HURT;
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return SoundEvents.HORSE_DEATH;
+    }
+
+    @Override
+    protected void playStepSound(@NotNull BlockPos pos, @NotNull BlockState blockState) {
+        if (!blockState.getFluidState().isEmpty()) {
+            return;
+        }
+        BlockState above = this.level().getBlockState(pos.above());
+        SoundType soundType = above.is(Blocks.SNOW)
+                ? above.getSoundType(this.level(), pos.above(), this)
+                : blockState.getSoundType(this.level(), pos, this);
+        SoundEvent step = isWoodSoundType(soundType) ? SoundEvents.HORSE_STEP_WOOD : SoundEvents.HORSE_STEP;
+        this.playSound(step, soundType.getVolume() * 0.15F, soundType.getPitch());
+    }
+
+    private static boolean isWoodSoundType(SoundType soundType) {
+        return soundType == SoundType.WOOD
+                || soundType == SoundType.NETHER_WOOD
+                || soundType == SoundType.STEM
+                || soundType == SoundType.CHERRY_WOOD
+                || soundType == SoundType.BAMBOO_WOOD;
+    }
+
+    @Override
     public void registerAnimations() {
         StandardAnimation idle = new StandardAnimation("idle",
                 new AnimSource(() -> PegasusAnimation.IDLE), Loop.REPEATING, 0, 3, 2.0F);
@@ -1077,6 +1191,26 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
         tameFail.blendInMs(120).blendOutMs(200);
         // The fall→impact cut is the impact; a long crossfade softens it away.
         hitGround.blendInMs(100);
+
+        // --- Sounds ----------------------------------------------------------------------
+        // AnimSound frames are in TICKS (durationTicks = (int)(withLength * 20)). DeluxeLib ticks
+        // these server-side only and broadcasts via Level#playSound, so no client guard is needed.
+        //
+        // Wingbeats, one per cycle at the top of the stroke. wing_flap.ogg is 0.5s, which is
+        // exactly fly_sprint's cycle (10 ticks) — the tightest of the three — so the flaps sit
+        // back to back at full gallop without ever overlapping themselves. fly_idle and fly run
+        // 17 ticks, leaving a ~0.35s gap between beats, which is what makes hovering read as
+        // slower than travelling even though it is the same sample.
+        flyIdle.sound(AnimSound.at(0, MythosMortalsSounds.PEGASUS_WING_FLAP.get()).volume(0.6F).pitchJitter(0.05F));
+        fly.sound(AnimSound.at(0, MythosMortalsSounds.PEGASUS_WING_FLAP.get()).volume(0.8F).pitchJitter(0.05F));
+        flySprint.sound(AnimSound.at(0, MythosMortalsSounds.PEGASUS_WING_FLAP.get()).volume(0.9F).pitchJitter(0.05F));
+
+        // Both PLAY_ONCE, so no .once() is needed to stop them repeating.
+        takeOff.sound(AnimSound.at(0, MythosMortalsSounds.PEGASUS_TAKE_OFF.get()));
+        landing.sound(AnimSound.at(0, MythosMortalsSounds.PEGASUS_LANDING.get()));
+        // The corpse hitting the ground gets the same impact as a controlled landing, the way the
+        // arpy's hit_ground reuses its landing sample.
+        hitGround.sound(AnimSound.at(0, MythosMortalsSounds.PEGASUS_LANDING.get()));
 
         // Both gait families are picked from the measured travel speed, and the second gear is the
         // rider's own sprint key rather than a speed threshold — so the change of animation lines up

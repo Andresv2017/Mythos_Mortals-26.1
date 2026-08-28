@@ -47,6 +47,36 @@
       "mythosmortals:entity/arpy/step"
     ]
   },
+  "entity.pegasus.ambient": {
+    "subtitle": "subtitles.mythosmortals.entity.pegasus.ambient",
+    "sounds": [
+      "mythosmortals:entity/pegasus/ambient"
+    ]
+  },
+  "entity.pegasus.dash": {
+    "subtitle": "subtitles.mythosmortals.entity.pegasus.dash",
+    "sounds": [
+      "mythosmortals:entity/pegasus/dash"
+    ]
+  },
+  "entity.pegasus.landing": {
+    "subtitle": "subtitles.mythosmortals.entity.pegasus.landing",
+    "sounds": [
+      "mythosmortals:entity/pegasus/landing"
+    ]
+  },
+  "entity.pegasus.take_off": {
+    "subtitle": "subtitles.mythosmortals.entity.pegasus.take_off",
+    "sounds": [
+      "mythosmortals:entity/pegasus/take_off"
+    ]
+  },
+  "entity.pegasus.wing_flap": {
+    "subtitle": "subtitles.mythosmortals.entity.pegasus.wing_flap",
+    "sounds": [
+      "mythosmortals:entity/pegasus/wing_flap"
+    ]
+  },
   "entity.soldier.ambient": {
     "subtitle": "subtitles.mythosmortals.entity.soldier.ambient",
     "sounds": [

@@ -7,6 +7,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EquipmentSlotGroup;
@@ -17,6 +18,7 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.item.component.BlocksAttacks;
 import net.minecraft.world.item.component.Consumables;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.Weapon;
 import net.minecraft.world.level.block.entity.BannerPattern;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -33,6 +35,9 @@ public final class MythosMortalsItems {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
         DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MythosMortals.MODID);
 
+    private static final TagKey<Item> BRONZE_INGOTS =
+        ItemTags.create(Identifier.fromNamespaceAndPath("c", "ingots/bronze"));
+
     public static final DeferredItem<Item> ATHENIAN_HELMET =
         ITEMS.registerSimpleItem("athenian_helmet", () -> helmetProperties("athenian_helmet", 3.0, 1.0));
     public static final DeferredItem<Item> SPARTAN_HELMET =
@@ -48,7 +53,7 @@ public final class MythosMortalsItems {
             .stacksTo(1)
             .durability(336)
             .enchantable(9)
-            .repairable(Items.OAK_PLANKS)
+            .repairable(BRONZE_INGOTS)
             .component(DataComponents.BLOCKS_ATTACKS, new BlocksAttacks(
                 0.0F,
                 1.0F,
@@ -61,7 +66,12 @@ public final class MythosMortalsItems {
 
     public static final DeferredItem<DoriSpearItem> DORI_SPEAR =
         ITEMS.registerItem("dori_spear", DoriSpearItem::new,
-            () -> new Item.Properties().stacksTo(1).attributes(DoriSpearItem.createAttributes()));
+            () -> new Item.Properties()
+                .stacksTo(1)
+                .durability(250)
+                .repairable(BRONZE_INGOTS)
+                .component(DataComponents.WEAPON, new Weapon(1))
+                .attributes(DoriSpearItem.createAttributes()));
 
     public static final DeferredItem<Item> XIFOS_SWORD =
         ITEMS.registerSimpleItem("xifos_sword", () -> new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
@@ -138,7 +148,7 @@ public final class MythosMortalsItems {
             .equippable(EquipmentSlot.HEAD)
             .durability(200)
             .enchantable(10)
-            .repairable(Items.IRON_INGOT)
+            .repairable(BRONZE_INGOTS)
             .attributes(ItemAttributeModifiers.builder()
                 .add(Attributes.ARMOR,
                     new AttributeModifier(Identifier.fromNamespaceAndPath(MythosMortals.MODID, "armor." + id),
