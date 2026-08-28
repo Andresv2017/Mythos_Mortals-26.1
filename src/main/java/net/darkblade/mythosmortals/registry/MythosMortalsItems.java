@@ -9,6 +9,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -26,6 +27,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.Optional;
 
 public final class MythosMortalsItems {
@@ -161,6 +163,29 @@ public final class MythosMortalsItems {
                 .build());
     }
 
+    // --- Spawn eggs ----------------------------------------------------------------------
+    // 26.1: SpawnEggItem no longer takes the EntityType (or the two tint colours) in its
+    // constructor — it reads the type from a data component that Item.Properties#spawnEgg sets.
+    // The textures are hand-drawn per mob rather than the vanilla tinted template, so no colours
+    // are involved at all. Entity types register before items, so .get() here is safe.
+    public static final DeferredItem<SpawnEggItem> ARPY_SPAWN_EGG =
+        spawnEgg("arpy", MythosMortalsEntities.ARPY);
+    public static final DeferredItem<SpawnEggItem> ATHENIAN_SPAWN_EGG =
+        spawnEgg("athenian", MythosMortalsEntities.ATHENIAN);
+    public static final DeferredItem<SpawnEggItem> MINOTAUR_SPAWN_EGG =
+        spawnEgg("minotaur", MythosMortalsEntities.MINOTAUR);
+    public static final DeferredItem<SpawnEggItem> OWL_SPAWN_EGG =
+        spawnEgg("owl", MythosMortalsEntities.OWL);
+    public static final DeferredItem<SpawnEggItem> PEGASUS_SPAWN_EGG =
+        spawnEgg("pegasus", MythosMortalsEntities.PEGASUS);
+    public static final DeferredItem<SpawnEggItem> SPARTAN_SPAWN_EGG =
+        spawnEgg("spartan", MythosMortalsEntities.SPARTAN);
+
+    private static DeferredItem<SpawnEggItem> spawnEgg(String mob, Supplier<? extends EntityType<?>> type) {
+        return ITEMS.registerItem(mob + "_spawn_egg", SpawnEggItem::new,
+            () -> new Item.Properties().spawnEgg(type.get()));
+    }
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ARMORY_TAB =
         CREATIVE_TABS.register("deluxe_armory", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.mythosmortals.deluxe_armory"))
@@ -188,6 +213,12 @@ public final class MythosMortalsItems {
                 output.accept(ATHENA_BANNER_PATTERN.get());
                 output.accept(CENTAUR_BANNER_PATTERN.get());
                 output.accept(SPARTA_BANNER_PATTERN.get());
+                output.accept(ARPY_SPAWN_EGG.get());
+                output.accept(ATHENIAN_SPAWN_EGG.get());
+                output.accept(MINOTAUR_SPAWN_EGG.get());
+                output.accept(OWL_SPAWN_EGG.get());
+                output.accept(PEGASUS_SPAWN_EGG.get());
+                output.accept(SPARTAN_SPAWN_EGG.get());
             })
             .build());
 

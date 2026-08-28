@@ -6,6 +6,7 @@ import net.darkblade.mythosmortals.entity.athenian.AthenianEntity;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurEntity;
 import net.darkblade.mythosmortals.entity.owl.OwlEntity;
 import net.darkblade.mythosmortals.entity.spartan.SpartanEntity;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.BlockEntityTypeAddBlocksEvent;
@@ -97,6 +98,17 @@ public final class MythosMortalsCommonEvents {
             event.accept(MythosMortalsBlocks.OLIVE_BOAT_ITEM.get());
             event.accept(MythosMortalsBlocks.OLIVE_CHEST_BOAT_ITEM.get());
             event.accept(MythosMortalsBlocks.GREEK_AMPHORA_ITEM.get());
+        }
+
+        // Also in the vanilla spawn-egg tab, which is where players actually go looking for eggs.
+        // They stay in the mod's own tab too, so browsing Mythos & Mortals shows the full set.
+        if (event.getTabKey().equals(CreativeModeTabs.SPAWN_EGGS)) {
+            event.accept(MythosMortalsItems.ARPY_SPAWN_EGG.get());
+            event.accept(MythosMortalsItems.ATHENIAN_SPAWN_EGG.get());
+            event.accept(MythosMortalsItems.MINOTAUR_SPAWN_EGG.get());
+            event.accept(MythosMortalsItems.OWL_SPAWN_EGG.get());
+            event.accept(MythosMortalsItems.PEGASUS_SPAWN_EGG.get());
+            event.accept(MythosMortalsItems.SPARTAN_SPAWN_EGG.get());
         }
     }
 

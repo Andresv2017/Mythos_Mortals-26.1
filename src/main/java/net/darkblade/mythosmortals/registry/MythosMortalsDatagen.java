@@ -70,6 +70,11 @@ public final class MythosMortalsDatagen {
 
             add(MythosMortalsBlocks.OLIVE_CHEST_BOAT_ITEM.get(), "Olive Boat with Chest");
 
+            // The entity is "Athenian Warrior", so its egg gets the full name rather than the
+            // "Athenian" that humanize() would derive from the registry path. Vanilla's convention
+            // is "<entity name> Spawn Egg" and the other five already match it.
+            add(MythosMortalsItems.ATHENIAN_SPAWN_EGG.get(), "Athenian Warrior Spawn Egg");
+
             autoItemNames(MythosMortalsItems.ITEMS);
 
             autoBlockNames(MythosMortalsBlocks.BLOCKS);
