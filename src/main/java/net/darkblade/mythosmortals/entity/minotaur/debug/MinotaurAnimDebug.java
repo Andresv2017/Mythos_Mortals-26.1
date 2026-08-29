@@ -14,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.Set;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurCtx;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurEntity;
@@ -36,19 +35,36 @@ public final class MinotaurAnimDebug {
     private static final char LOG_CELL_PLAIN = '.';
     private static final char LOG_CELL_CURSOR = 'X';
 
-    private final MinotaurEntity mino;
+    // Runtime toggles, off until switched on with /mythosmortals debug minotauranim[log].
+    private static boolean actionBarEnabled;
+    private static boolean consoleEnabled;
 
-    private final Set<String> clipsSinKeyframes = new HashSet<>();
+    public static boolean toggleActionBar() {
+        actionBarEnabled = !actionBarEnabled;
+        return actionBarEnabled;
+    }
+
+    public static boolean toggleConsole() {
+        consoleEnabled = !consoleEnabled;
+        return consoleEnabled;
+    }
+
+    public static boolean isEnabled() {
+        return actionBarEnabled || consoleEnabled;
+    }
+
+    public static Component helpMessage(boolean on, boolean console) {
+        final String what = console ? "console log" : "action bar";
+        return Component.literal("[MythosMortals] Minotaur anim " + what + (on ? " ON" : " OFF"));
+    }
+
+    private final MinotaurEntity mino;
 
     private int lastStateId = Integer.MIN_VALUE;
     private int lastStateTicks;
 
     public MinotaurAnimDebug(@NotNull MinotaurEntity mino) {
         this.mino = mino;
-    }
-
-    public void markMissing(@NotNull String clipName) {
-        this.clipsSinKeyframes.add(clipName);
     }
 
     // ------------------------------------------------------------------
@@ -63,7 +79,7 @@ public final class MinotaurAnimDebug {
         // Logged whether or not a player is nearby: this is the line that explains the combo.
         final int stateId = state.id();
         if (stateId != this.lastStateId) {
-            if (MinotaurCtx.DEBUG_ANIM_CONSOLE && this.lastStateId != Integer.MIN_VALUE) {
+            if (consoleEnabled && this.lastStateId != Integer.MIN_VALUE) {
                 logTransition(stateId);
             }
             this.lastStateId = stateId;
@@ -74,11 +90,11 @@ public final class MinotaurAnimDebug {
 
         final boolean inCombat = this.mino.getTarget() != null || state != MinotaurState.IDLE;
 
-        if (MinotaurCtx.DEBUG_ANIM_CONSOLE && inCombat) {
+        if (consoleEnabled && inCombat) {
             LOG.info("{}", logLine(state, clip, cortex));
         }
 
-        if (MinotaurCtx.DEBUG_ANIM_ACTION_BAR) {
+        if (actionBarEnabled) {
             final ServerPlayer viewer = pickViewer();
             if (viewer != null) {
                 // overlay = true is the action bar; the plain overload goes to chat.
@@ -98,7 +114,7 @@ public final class MinotaurAnimDebug {
      * {@code dur}, the entity was removed too early.
      */
     public void tickDeath() {
-        if (!MinotaurCtx.DEBUG_ANIM_CONSOLE) {
+        if (!consoleEnabled) {
             return;
         }
         final var animator = this.mino.animator();
@@ -148,7 +164,7 @@ public final class MinotaurAnimDebug {
         if (clip == null) {
             line.append("§8(sin clip)");
         } else {
-            line.append(this.clipsSinKeyframes.contains(clip.getName()) ? "§c⚠" : "§a").append(clip.getName());
+            line.append("§a").append(clip.getName());
             line.append(" ").append(bar(clip, CELL_PLAIN, CELL_HIT, CELL_CURSOR, true));
             line.append(" §7").append(clip.getTick()).append("§8/").append(clip.getDurationTicks());
         }
@@ -186,8 +202,7 @@ public final class MinotaurAnimDebug {
         if (clip == null) {
             line.append(String.format("%-22s", "(sin clip)"));
         } else {
-            final String name = (this.clipsSinKeyframes.contains(clip.getName()) ? "!" : " ") + clip.getName();
-            line.append(String.format("%-22s", name));
+            line.append(String.format("%-22s", " " + clip.getName()));
             line.append(" ").append(bar(clip, LOG_CELL_PLAIN, LOG_CELL_HIT, LOG_CELL_CURSOR, false));
             line.append(String.format(" %2d/%-2d", clip.getTick(), clip.getDurationTicks()));
             line.append(" hit ").append(hitRange(clip));

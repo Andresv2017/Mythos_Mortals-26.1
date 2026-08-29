@@ -45,10 +45,8 @@ public class ChargeRunBehavior implements Behavior<MinotaurEntity, MinotaurState
             return MinotaurState.CHARGE_HIT.id();
         }
 
-        // Whiffed: run the budget out. The overshoot IS the dodge reward — braking early would
-        // let it turn around and re-attack immediately. No stun here; that is for walls only.
         if (context.ticksInState() >= MinotaurCtx.CHARGE_MAX_RUN_TICKS) {
-            return MinotaurState.COMBAT_IDLE.id();
+            return MinotaurState.CHARGE_RECOVER.id();
         }
 
         return null;

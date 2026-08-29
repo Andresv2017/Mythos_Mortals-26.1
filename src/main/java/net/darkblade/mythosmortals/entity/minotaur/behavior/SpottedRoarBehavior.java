@@ -46,8 +46,6 @@ public class SpottedRoarBehavior implements Behavior<MinotaurEntity, MinotaurSta
 
     @Override
     public void onExit(MinotaurEntity entity, BehaviorContext context, boolean interrupted) {
-        if (interrupted) {
-            entity.animator().stop(entity.animator().getByName("target_spotted"));
-        }
+        entity.animator().stop(entity.animator().getByName("target_spotted"));
     }
 }

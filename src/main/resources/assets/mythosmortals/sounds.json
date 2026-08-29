@@ -80,7 +80,10 @@
   "entity.minotaur.roar": {
     "subtitle": "subtitles.mythosmortals.entity.minotaur.roar",
     "sounds": [
-      "mythosmortals:entity/minotaur/roar"
+      {
+        "name": "mythosmortals:entity/minotaur/roar",
+        "attenuation_distance": 32
+      }
     ]
   },
   "entity.minotaur.slam": {

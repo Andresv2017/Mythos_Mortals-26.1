@@ -52,4 +52,9 @@ public class ChargeWindupBehavior implements Behavior<MinotaurEntity, MinotaurSt
     public boolean canBeInterrupted(MinotaurEntity entity, BehaviorContext context, int interruptingStateId) {
         return false;
     }
+
+    @Override
+    public void onExit(MinotaurEntity entity, BehaviorContext context, boolean interrupted) {
+        entity.animator().stop(entity.animator().getByName("charge_start"));
+    }
 }

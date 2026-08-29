@@ -44,4 +44,10 @@ public class ChargeHitBehavior implements Behavior<MinotaurEntity, MinotaurState
     public boolean canBeInterrupted(MinotaurEntity entity, BehaviorContext context, int interruptingStateId) {
         return false;
     }
+
+    @Override
+    public void onExit(MinotaurEntity entity, BehaviorContext context, boolean interrupted) {
+        context.set(MinotaurCtx.NEXT_MELEE_TIME,
+                entity.level().getGameTime() + MinotaurCtx.CHARGE_HIT_RECOVERY);
+    }
 }

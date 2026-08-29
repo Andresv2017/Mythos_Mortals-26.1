@@ -20,10 +20,6 @@ public final class MinotaurCtx {
 
     public static final boolean ENABLE_RIDING = false;
 
-    public static final boolean DEBUG_ANIM_ACTION_BAR = true;
-
-    public static final boolean DEBUG_ANIM_CONSOLE = true;
-
     public static final boolean ENABLE_UNANIMATED_ATTACKS = true;
 
     // --- ranges ---
@@ -40,11 +36,7 @@ public final class MinotaurCtx {
 
     // --- boss bar ---
 
-    /**
-     * Radius within which players are shown the boss bar. Well inside the entity's
-     * clientTrackingRange(10) = 160 blocks, so anyone who sees the bar has the mob loaded.
-     */
-    public static final double BOSS_BAR_RADIUS = 48.0;
+    public static final double BOSS_BAR_RADIUS = 32.0;
 
     public static final double BOSS_BAR_RADIUS_SQR = BOSS_BAR_RADIUS * BOSS_BAR_RADIUS;
 
@@ -54,7 +46,6 @@ public final class MinotaurCtx {
 
     public static final float PUSH_CONTACT_RANGE = 2.2F;
 
-    /** Matches FRONT_PUSH's clip: 0.9583s * 20 = 19 ticks. Was 12 while the clip was a placeholder. */
     public static final int PUSH_TICKS = 19;
 
     public static final float PUSH_KNOCKBACK = 2.6F;
@@ -69,7 +60,6 @@ public final class MinotaurCtx {
 
     public static final float VERTICAL_RANGE = 3.6F;
     public static final float VERTICAL_CHANCE = 0.35F;
-    /** Matches COMBO_C's clip: 1.864s * 20 = 37 ticks. Was 35 while the clip was a placeholder. */
     public static final int VERTICAL_TICKS = 37;
 
     // --- charge ---
@@ -80,10 +70,14 @@ public final class MinotaurCtx {
 
     public static final float CHARGE_MAX_RANGE = 12.0F;
 
-    public static final int CHARGE_WINDUP_TICKS = 15;
+    public static final int CHARGE_WINDUP_TICKS = 28;
     public static final int CHARGE_MAX_RUN_TICKS = 27;
-    public static final int CHARGE_HIT_TICKS = 10;
-    public static final int CHARGE_STUN_TICKS = 40;
+    public static final int CHARGE_HIT_TICKS = 20;
+    public static final int CHARGE_STUN_TICKS = 60;
+
+    public static final int CHARGE_HIT_RECOVERY = 15;
+    public static final int CHARGE_STUN_RECOVERY = 20;
+    public static final int CHARGE_WHIFF_RECOVERY = 25;
     public static final float CHARGE_DAMAGE = 12.0F;
 
     // --- speeds ---
@@ -113,5 +107,5 @@ public final class MinotaurCtx {
 
     // --- misc ---
 
-    public static final int SPOTTED_ROAR_TICKS = 20;
+    public static final int SPOTTED_ROAR_TICKS = 34;
 }

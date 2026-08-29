@@ -23,6 +23,7 @@ import net.darkblade.deluxelib.entity.ai.pathing.DirectionalMoveControl;
 import net.darkblade.deluxelib.entity.ai.rotation.SmoothBodyRotationControl;
 import net.minecraft.world.entity.ai.control.BodyRotationControl;
 import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeHitBehavior;
+import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeRecoverBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeRunBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeStunBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeWindupBehavior;
@@ -77,12 +78,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return control;
     }
 
-    /**
-     * Drives the custom boss bar. The name is never drawn — MinotaurBossBarRenderer cancels
-     * vanilla's rendering, its text included — it exists only as the marker the client matches on
-     * to tell this bar apart from every other one on screen. Colour and overlay go unused for the
-     * same reason, and are set only so the event is well-formed.
-     */
     private final ServerBossEvent bossEvent = new ServerBossEvent(
             UUID.randomUUID(),
             Component.translatable("entity.mythosmortals.minotaur"),
@@ -93,30 +88,26 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     public void tick() {
         super.tick();
         if (!this.level().isClientSide()) {
-            this.updateBossBar();
-        }
-        if ((MinotaurCtx.DEBUG_ANIM_ACTION_BAR || MinotaurCtx.DEBUG_ANIM_CONSOLE)
-                && !this.level().isClientSide()) {
-            this.debug.tick();
+            // super.tick() discards the entity on the death tick, and remove() clears the bar. Running
+            // the radius scan afterwards put every player straight back onto a bar that nothing would
+            // ever tick again -- the bar that stuck on screen until relog.
+            if (this.isRemoved() || !this.isAlive()) {
+                this.bossEvent.removeAllPlayers();
+            } else {
+                this.updateBossBar();
+            }
+            if (MinotaurAnimDebug.isEnabled()) {
+                this.debug.tick();
+            }
         }
     }
 
-    /**
-     * Without this the bar would outlive the mob: once the entity is gone {@link #tick()} stops
-     * running, so nothing would ever take the players off the event and the bar would sit on their
-     * screen forever. Covers death, chunk unload and /kill alike.
-     */
     @Override
     public void remove(Entity.@NotNull RemovalReason reason) {
         this.bossEvent.removeAllPlayers();
         super.remove(reason);
     }
 
-    /**
-     * Shows the bar to every player inside {@link MinotaurCtx#BOSS_BAR_RADIUS} and takes it away
-     * once they leave. Reconciled every tick rather than driven by a trigger, so walking out of
-     * range, teleporting away or dying all drop the bar without each needing its own hook.
-     */
     private void updateBossBar() {
         float max = this.getMaxHealth();
         this.bossEvent.setProgress(max <= 0.0F ? 0.0F : this.getHealth() / max);
@@ -135,11 +126,12 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
 
     public static AttributeSupplier.Builder createAttributes() {
         return Monster.createMonsterAttributes()
-                .add(Attributes.MAX_HEALTH, 120.0)
+                .add(Attributes.MAX_HEALTH, 200.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.25)
                 .add(Attributes.ATTACK_DAMAGE, 9.0)
-                .add(Attributes.ARMOR, 8.0)
-                .add(Attributes.KNOCKBACK_RESISTANCE, 0.8)
+                .add(Attributes.ARMOR, 14.0)
+                .add(Attributes.ARMOR_TOUGHNESS, 6.0)
+                .add(Attributes.KNOCKBACK_RESISTANCE, 0.9)
                 .add(Attributes.FOLLOW_RANGE, 32.0)
                 .add(Attributes.STEP_HEIGHT, 1.0);
     }
@@ -228,6 +220,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .register(MinotaurState.CHARGE_RUN, new ChargeRunBehavior())
                 .register(MinotaurState.CHARGE_HIT, new ChargeHitBehavior())
                 .register(MinotaurState.CHARGE_STUN, new ChargeStunBehavior())
+                .register(MinotaurState.CHARGE_RECOVER, new ChargeRecoverBehavior())
 
                 .globalRule((entity, ctx, currentStateId) -> {
                     final LivingEntity target = entity.getTarget();
@@ -246,7 +239,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 // One filtered LivingEntity scan, not two stacked NearestEntityTargeting: those
                 // only keep a target of their own class, so the last one would steal it every cycle.
                 .targeting(new CompositeTargeting<MinotaurEntity>(
-                        new NearestEntityTargeting<MinotaurEntity, LivingEntity>(LivingEntity.class, 20.0, 10, true,
+                        new NearestEntityTargeting<MinotaurEntity, LivingEntity>(LivingEntity.class, 32.0, 10, true,
                                 candidate -> candidate instanceof Player player
                                         ? !player.isCreative() && !player.isSpectator()
                                         : candidate instanceof GuardingMeleeEntity),
@@ -311,8 +304,8 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     // --- Vanilla sound hooks -------------------------------------------------------------
     // Before this the minotaur made no sound at all — not even a vanilla placeholder. Mob#baseTick
     // drives the ambient timer (80 ticks) and CortexMonster does not override baseTick, so the
-    // hook lands. Death goes through getDeathSound rather than the death animation because that
-    // clip is still a placeholder (see sinKeyframes); the vanilla hook does not depend on it.
+    // hook lands. Death goes through getDeathSound rather than through a frame event on the DEATH
+    // clip, so the sample fires even if the animation never starts.
 
     @Override
     protected SoundEvent getAmbientSound() {
@@ -362,11 +355,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         this.playSound(SoundEvents.RAVAGER_STEP, soundType.getVolume() * 0.25F, soundType.getPitch() * 0.8F);
     }
 
-    private StandardAnimation sinKeyframes(String name, Loop loop, int priority, float duration) {
-        this.debug.markMissing(name);
-        return new StandardAnimation(name, new AnimSource(() -> null), loop, 0, priority, duration);
-    }
-
     @Override
     public void registerAnimations() {
         // --- locomotion loops ---
@@ -376,14 +364,22 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         StandardAnimation walk       = new StandardAnimation("walk",        new AnimSource(() -> MinotaurAnimation.WALK), Loop.REPEATING, 0, 2, 2.0F);
         StandardAnimation run        = new StandardAnimation("run",         new AnimSource(() -> MinotaurAnimation.RUN), Loop.REPEATING, 0, 1, 0.75F);
         StandardAnimation combatIdle = new StandardAnimation("combat_idle", new AnimSource(() -> MinotaurAnimation.COMBAT_STANCE), Loop.REPEATING, 0, 1, 2.0F);
-        StandardAnimation chargeLoop = sinKeyframes("charge_loop", Loop.REPEATING, 1, 0.5F);
+        // CHARGE_LOOP is the 0.5s gallop. Blockbench also exported a 2.0s variant of the exact same
+        // motion (same values, times x4); the fast one is the keeper because 0.5s is what makes one
+        // gallop cycle land per charge_loop.ogg (0.499s) with no overlap.
+        StandardAnimation chargeLoop = new StandardAnimation("charge_loop",
+                new AnimSource(() -> MinotaurAnimation.CHARGE_LOOP), Loop.REPEATING, 0, 1, 0.5F);
 
         // No hurt clip on purpose: a flinch would read as an interrupt the super armor never gives.
         StandardAnimation death = new StandardAnimation("death",
                 new AnimSource(() -> MinotaurAnimation.DEATH), Loop.PLAY_ONCE, 0, 0, 2.4583F);
 
         // --- one-shots, played by the behaviors in onEnter ---
-        StandardAnimation spotted     = sinKeyframes("target_spotted",      Loop.PLAY_ONCE, 0, 1.0F);
+        // ALERT_ROAR was stretched to 1.70s so the bellow covers roar.ogg (1.68s) instead of
+        // shutting the jaw a third of the way in. Clip length and SPOTTED_ROAR_TICKS (34) now match
+        // exactly; the duration must stay the real length or AnimSound frames map to wrong ticks.
+        StandardAnimation spotted     = new StandardAnimation("target_spotted",
+                new AnimSource(() -> MinotaurAnimation.ALERT_ROAR), Loop.PLAY_ONCE, 0, 0, 1.70F);
         StandardAnimation horizontal1 = new StandardAnimation("attack_horizontal_1", new AnimSource(() -> MinotaurAnimation.COMBO_A), Loop.PLAY_ONCE, 0, 0, MinotaurCtx.COMBO_CLIP_SECONDS);
         StandardAnimation horizontal2 = new StandardAnimation("attack_horizontal_2", new AnimSource(() -> MinotaurAnimation.COMBO_B), Loop.PLAY_ONCE, 0, 0, MinotaurCtx.COMBO_CLIP_SECONDS);
         // COMBO_C is the overhead finisher. Its impact frame was read off the keyframes: the kinetic
@@ -393,9 +389,16 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 new AnimSource(() -> MinotaurAnimation.COMBO_C), Loop.PLAY_ONCE, 0, 0, 1.864F);
         StandardAnimation push        = new StandardAnimation("attack_push",
                 new AnimSource(() -> MinotaurAnimation.FRONT_PUSH), Loop.PLAY_ONCE, 0, 0, 0.9583F);
-        StandardAnimation chargeStart = sinKeyframes("charge_start",        Loop.PLAY_ONCE, 0, 0.75F);
-        StandardAnimation chargeHit   = sinKeyframes("charge_hit",          Loop.PLAY_ONCE, 0, 0.5F);
-        StandardAnimation chargeStun  = sinKeyframes("charge_stun",         Loop.PLAY_ONCE, 0, 2.0F);
+        // CHARGE_START's dead tail (keyframes stopped at 0.75s of a 1.0s clip) now carries the
+        // settle onto CHARGE_LOOP's opening pose, so the windup uses its full second.
+        StandardAnimation chargeStart = new StandardAnimation("charge_start",
+                new AnimSource(() -> MinotaurAnimation.CHARGE_START), Loop.PLAY_ONCE, 0, 0, 1.40F);
+        // Both were stretched for recovery: the ram's whip and the wall crash keep their original
+        // speed, the settle after each is what got the extra time.
+        StandardAnimation chargeHit   = new StandardAnimation("charge_hit",
+                new AnimSource(() -> MinotaurAnimation.CHARGE_HIT), Loop.PLAY_ONCE, 0, 0, 1.0F);
+        StandardAnimation chargeStun  = new StandardAnimation("charge_stun",
+                new AnimSource(() -> MinotaurAnimation.CHARGE_STUN), Loop.PLAY_ONCE, 0, 0, 3.0F);
 
         // Loops cross in 300 ms, not 150: IDLE animates neither the root, `top` nor the legs, so
         // leaving it interpolates from the bind pose rather than from an idle pose.
@@ -408,6 +411,29 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         horizontal2.blendInMs(80).blendOutMs(250).blockAdditive();
         vertical.blendInMs(200).blendOutMs(300).blockAdditive();
         push.blendInMs(120).blendOutMs(200).blockAdditive();
+
+        // The roar does NOT end on the neutral pose: it finishes mid-turn (head -47 deg of yaw, torso
+        // +12) and a step out of place, with the root never moving. A long blend out is what keeps
+        // the return from reading as a slide.
+        spotted.blendInMs(200).blendOutMs(300).blockAdditive();
+
+        // Note that BlendState resolves a transition as max(outgoing.blendOut, incoming.blendIn),
+        // so it is the INCOMING clip's blend in that sets how long a cross takes. A generous blend
+        // out on the clip being left does nothing on its own.
+        //
+        //  - chargeStart has three possible predecessors (COMBAT_STANCE from the guard, RUN from
+        //    the chase, ALERT_ROAR from the sighting) and matches none of them — they all arrive
+        //    with the arm up. That is what a blend is for; 250 ms covers the worst of the three.
+        //  - chargeLoop is the one case that needs almost nothing: CHARGE_START's tail was rewritten
+        //    to settle exactly onto this clip's opening pose, so the cross is a continuation.
+        //  - chargeHit and chargeStun open on the loop's t=0 pose, but the gallop's PHASE at the
+        //    moment of impact is arbitrary — the cycle is 10 ticks and the ram lands wherever it
+        //    lands — and a displaced loop freezes rather than running on. The legs can be half a
+        //    cycle out, so these have to cross for real.
+        chargeStart.blendInMs(250).blendOutMs(100).blockAdditive();
+        chargeLoop.blendInMs(120).blendOutMs(100);
+        chargeHit.blendInMs(180).blendOutMs(250).blockAdditive();
+        chargeStun.blendInMs(180).blendOutMs(300).blockAdditive();
 
         // --- hit windows, bound to each animation's impact ticks ---
         //
@@ -475,10 +501,8 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         // AnimSound frames are in TICKS (durationTicks = (int)(withLength * 20)). DeluxeLib ticks
         // these server-side only and broadcasts via Level#playSound, so no client guard is needed.
         //
-        // Most of these hang off animations that are still sinKeyframes placeholders. They tick and
-        // fire frame events all the same — that is the whole premise of ENABLE_UNANIMATED_ATTACKS,
-        // and the hit windows above already rely on it. When the real clips land, re-check the
-        // frames here against them the way the hit-window comment says to.
+        // Every clip below now has real keyframes, so these frames can be read against the actual
+        // motion rather than against a placeholder's assumed timing.
 
         // The axe leads the blow: one tick ahead of each window so the whoosh reads as the cause
         // of the hit rather than its echo. pitchJitter keeps a chained combo from sounding cloned.
@@ -491,7 +515,16 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         vertical.sound(AnimSound.at(17, MythosMortalsSounds.MINOTAUR_SLAM.get()));
 
         push.sound(AnimSound.at(0, MythosMortalsSounds.MINOTAUR_PUSH.get()));
-        spotted.sound(AnimSound.at(0, MythosMortalsSounds.MINOTAUR_ROAR.get()));
+        // Tick 8, not 0, because roar.ogg starts DRY: measured in 5 ms windows it is at -6.5 dBFS
+        // by 0.005s, i.e. full volume on the first sample, with no intake breath in front of the
+        // bellow. Fired at 0 the minotaur roars at full blast for 8 ticks with its mouth shut.
+        //
+        // Tick 8 is where the jaw breaks open (0.4167s), and the rest lines up on its own: 99% of
+        // the sample's energy is spent by its own tick 21 — clip tick 29 — which is exactly where
+        // the jaw stops shaking and starts to close. What is left of the sample after that is below
+        // -48 dBFS and covers the close. Its nominal 1.68s outlives the 34-tick clip by a few
+        // ticks, which is inaudible and fine, the same way slam.ogg outlives COMBO_C.
+        spotted.sound(AnimSound.at(8, MythosMortalsSounds.MINOTAUR_ROAR.get()).volume(2.0F));
 
         // charge_loop is REPEATING at 10 ticks and the sample is 0.499s, so one gallop cycle lands
         // per animation cycle with no overlap. No .once(): the point is that it keeps running for

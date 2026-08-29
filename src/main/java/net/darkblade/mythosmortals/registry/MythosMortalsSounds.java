@@ -31,11 +31,8 @@ public final class MythosMortalsSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> PEGASUS_DASH      = event("entity.pegasus.dash");
 
     // --- Minotaur ---
-    // The physical half of the charge stays on vanilla, which happens to have exact matches:
-    // goat.prepare_ram, goat.ram_impact, ravager.stunned and ravager.step. What is registered here
-    // is the voice and the weapon — the parts no vanilla mob can stand in for. See MinotaurEntity.
     public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_AMBIENT     = event("entity.minotaur.ambient");
-    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_ROAR        = event("entity.minotaur.roar");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_ROAR        = fixedRangeEvent("entity.minotaur.roar", 32.0F);
     public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_DEATH       = event("entity.minotaur.death");
     public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_HURT        = event("entity.minotaur.hurt");
     public static final DeferredHolder<SoundEvent, SoundEvent> MINOTAUR_SWING       = event("entity.minotaur.swing");
@@ -57,6 +54,11 @@ public final class MythosMortalsSounds {
     private static DeferredHolder<SoundEvent, SoundEvent> event(String name) {
         return SOUND_EVENTS.register(name, () ->
             SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(MythosMortals.MODID, name)));
+    }
+
+    private static DeferredHolder<SoundEvent, SoundEvent> fixedRangeEvent(String name, float range) {
+        return SOUND_EVENTS.register(name, () ->
+            SoundEvent.createFixedRangeEvent(Identifier.fromNamespaceAndPath(MythosMortals.MODID, name), range));
     }
 
     private MythosMortalsSounds() {

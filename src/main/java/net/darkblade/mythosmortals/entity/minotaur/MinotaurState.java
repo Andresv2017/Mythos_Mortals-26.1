@@ -15,7 +15,8 @@ public enum MinotaurState implements StateEnum {
     CHARGE_WINDUP(8),       // scrapes the ground, aims horns
     CHARGE_RUN(9),          // straight-line dash
     CHARGE_HIT(10),         // successful impact: launches the target
-    CHARGE_STUN(11);        // wall crash: dazed and vulnerable
+    CHARGE_STUN(11),        // wall crash: dazed and vulnerable
+    CHARGE_RECOVER(12);     // whiffed dash: pulls up and plants, hitting nothing
     private final int id;
 
     MinotaurState(int id) {
