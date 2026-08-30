@@ -302,21 +302,11 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     }
 
     // --- Vanilla sound hooks -------------------------------------------------------------
-    // Before this the minotaur made no sound at all — not even a vanilla placeholder. Mob#baseTick
-    // drives the ambient timer (80 ticks) and CortexMonster does not override baseTick, so the
-    // hook lands. Death goes through getDeathSound rather than through a frame event on the DEATH
-    // clip, so the sample fires even if the animation never starts.
-
     @Override
     protected SoundEvent getAmbientSound() {
         return MythosMortalsSounds.MINOTAUR_AMBIENT.get();
     }
 
-    /**
-     * Capped at 0.5s on purpose. invulnerableTime is 20 ticks, but a stronger hit re-triggers after
-     * 10, so a longer sample overlaps itself while the minotaur is being focused down. This
-     * replaces the entity.ravager.hurt stand-in the brief left in place.
-     */
     @Override
     protected SoundEvent getHurtSound(@NotNull DamageSource source) {
         return MythosMortalsSounds.MINOTAUR_HURT.get();
@@ -327,12 +317,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         return MythosMortalsSounds.MINOTAUR_DEATH.get();
     }
 
-    /**
-     * Only to trace the death animation. A dying entity runs tickDeath() in place of aiStep(), so
-     * the normal debug line stops the moment the death starts; without this hook the whole window
-     * we care about is invisible. CortexMonster#tickDeath delegates to the animator, so super still
-     * does all the real work.
-     */
     @Override
     protected void tickDeath() {
         if (!this.level().isClientSide()) {
@@ -341,11 +325,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         super.tickDeath();
     }
 
-    /**
-     * Hooves rather than the generic block footstep. entity.ravager.step already is a heavy hoof on
-     * dirt, so it stands in for the sample the brief marked optional. The 0.25 factor is above
-     * vanilla's usual 0.15 for large mobs: this one is boss-scale and its tread should carry.
-     */
     @Override
     protected void playStepSound(@NotNull BlockPos pos, @NotNull BlockState blockState) {
         if (!blockState.getFluidState().isEmpty()) {
@@ -445,7 +424,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .shape(AttackShape.sector(3.2F, 50.0F))
                 .anchor(1.4F, 0.0F, 1.4F)
                 .sweepAngle(50.0F, -65.0F)
-                .damage(9.0F)
+                .damage(11.0F)
                 // Deliberately low: A's job is to leave the target where B can still reach.
                 .knockback(0.25F)
                 .filter(t -> !(t instanceof MinotaurEntity))
@@ -492,7 +471,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         HitWindow.of(4, 7)
                 .shape(AttackShape.sector(3.4F, 100.0F))
                 .anchor(0.0F, 0.0F, 1.2F)
-                .damage(5.0F)
+                .damage(6.0F)
                 .knockback(MinotaurCtx.PUSH_KNOCKBACK)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(push);
