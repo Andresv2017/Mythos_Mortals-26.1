@@ -81,6 +81,8 @@
   "block.mythosmortals.stripped_olive_log": "Stripped Olive Log",
   "block.mythosmortals.stripped_olive_wood": "Stripped Olive Wood",
   "block.mythosmortals.tin_ore": "Tin Ore",
+  "death.attack.minotaur_gore": "%1$s was gored by %2$s",
+  "death.attack.minotaur_gore.item": "%1$s was gored by %2$s using %3$s",
   "effect.mythosmortals.boreal_courage": "Boreal Courage",
   "entity.mythosmortals.arpy": "Arpy",
   "entity.mythosmortals.athenian": "Athenian Warrior",

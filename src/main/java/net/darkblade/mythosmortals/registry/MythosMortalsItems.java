@@ -94,10 +94,15 @@ public final class MythosMortalsItems {
         ITEMS.registerSimpleItem("raw_tin", Item.Properties::new);
     public static final DeferredItem<Item> TIN_INGOT =
         ITEMS.registerSimpleItem("tin_ingot", Item.Properties::new);
+
+    public static final FoodProperties GRAPES_FOOD = new FoodProperties(2, 1.2F, false);
+
+    public static final FoodProperties OLIVES_FOOD = new FoodProperties(2, 2.0F, false);
+
     public static final DeferredItem<Item> GRAPES =
-        ITEMS.registerSimpleItem("grapes", Item.Properties::new);
+        ITEMS.registerSimpleItem("grapes", () -> new Item.Properties().food(GRAPES_FOOD));
     public static final DeferredItem<Item> OLIVES =
-        ITEMS.registerSimpleItem("olives", Item.Properties::new);
+        ITEMS.registerSimpleItem("olives", () -> new Item.Properties().food(OLIVES_FOOD));
 
     public static final FoodProperties WINE_FOOD = new FoodProperties(3, 1.8F, true);
 

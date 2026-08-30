@@ -81,6 +81,9 @@ public final class MythosMortalsDatagen {
 
             add("effect.mythosmortals.boreal_courage", "Boreal Courage");
 
+            add("death.attack.minotaur_gore", "%1$s was gored by %2$s");
+            add("death.attack.minotaur_gore.item", "%1$s was gored by %2$s using %3$s");
+
             add("tooltip.mythosmortals.marinated", "Marinated in olive oil");
             add("tooltip.mythosmortals.marinated.effect", "+2 hunger, +50% saturation");
 

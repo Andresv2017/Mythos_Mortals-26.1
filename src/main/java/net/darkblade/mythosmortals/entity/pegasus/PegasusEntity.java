@@ -144,7 +144,7 @@ public class PegasusEntity extends AbstractFlyingEntity implements Animatable<Pe
 
     public static AttributeSupplier.Builder createAttributes() {
         return Animal.createAnimalAttributes()
-                .add(Attributes.MAX_HEALTH, 30.0)
+                .add(Attributes.MAX_HEALTH, 45.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.25)
                 .add(Attributes.FLYING_SPEED, 0.70)
                 .add(Attributes.FOLLOW_RANGE, 24.0)

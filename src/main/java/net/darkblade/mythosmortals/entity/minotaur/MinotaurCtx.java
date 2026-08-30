@@ -68,7 +68,7 @@ public final class MinotaurCtx {
 
     public static final float CHARGE_ABORT_RANGE = 3.0F;
 
-    public static final float CHARGE_MAX_RANGE = 12.0F;
+    public static final float CHARGE_MAX_RANGE = 16.0F;
 
     public static final int CHARGE_WINDUP_TICKS = 28;
     public static final int CHARGE_MAX_RUN_TICKS = 27;
@@ -78,12 +78,14 @@ public final class MinotaurCtx {
     public static final int CHARGE_HIT_RECOVERY = 15;
     public static final int CHARGE_STUN_RECOVERY = 20;
     public static final int CHARGE_WHIFF_RECOVERY = 25;
-    public static final float CHARGE_DAMAGE = 18.0F;
+    public static final float CHARGE_DAMAGE = 20.0F;
+
+    public static final float GORE_ARMOR_PIERCE = 0.5F;
 
     // --- speeds ---
 
     public static final double WALK_SPEED = 1.0;
-    public static final double RUN_SPEED = 1.35;
+    public static final double RUN_SPEED = 1.5;
 
     public static final float BODY_TURN_STILL = 0.30F;
 
@@ -92,7 +94,7 @@ public final class MinotaurCtx {
     // --- cooldowns (ticks) ---
 
     public static final int MELEE_COOLDOWN = 30;
-    public static final int CHARGE_COOLDOWN = 200;
+    public static final int CHARGE_COOLDOWN = 140;
 
     // --- horizontal combo ---
 

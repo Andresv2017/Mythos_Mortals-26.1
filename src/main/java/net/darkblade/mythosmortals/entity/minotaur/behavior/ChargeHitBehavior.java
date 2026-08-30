@@ -5,6 +5,7 @@ import net.darkblade.deluxelib.entity.ai.cortex.behavior.BehaviorContext;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurCtx;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurEntity;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurState;
+import net.darkblade.mythosmortals.registry.MythosMortalsDamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -23,7 +24,7 @@ public class ChargeHitBehavior implements Behavior<MinotaurEntity, MinotaurState
                 entity.getBoundingBox().inflate(1.2, 0.5, 1.2).move(direction.scale(0.8)),
                 t -> t != entity && t.isAlive() && !(t instanceof MinotaurEntity))) {
 
-            victim.hurt(entity.damageSources().mobAttack(entity), MinotaurCtx.CHARGE_DAMAGE);
+            victim.hurt(MythosMortalsDamageTypes.minotaurGore(entity), MinotaurCtx.CHARGE_DAMAGE);
             victim.setDeltaMovement(direction.x * 1.1, 0.85, direction.z * 1.1);
             victim.hurtMarked = true;
         }

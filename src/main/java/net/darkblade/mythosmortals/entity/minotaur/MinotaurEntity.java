@@ -31,6 +31,7 @@ import net.darkblade.mythosmortals.entity.minotaur.behavior.PushBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.behavior.SpottedRoarBehavior;
 import net.darkblade.mythosmortals.entity.minotaur.client.render.MinotaurAnimation;
 import net.darkblade.mythosmortals.entity.minotaur.debug.MinotaurAnimDebug;
+import net.darkblade.mythosmortals.registry.MythosMortalsDamageTypes;
 import net.darkblade.mythosmortals.registry.MythosMortalsSounds;
 import java.util.UUID;
 
@@ -88,9 +89,6 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     public void tick() {
         super.tick();
         if (!this.level().isClientSide()) {
-            // super.tick() discards the entity on the death tick, and remove() clears the bar. Running
-            // the radius scan afterwards put every player straight back onto a bar that nothing would
-            // ever tick again -- the bar that stuck on screen until relog.
             if (this.isRemoved() || !this.isAlive()) {
                 this.bossEvent.removeAllPlayers();
             } else {
@@ -126,10 +124,10 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
 
     public static AttributeSupplier.Builder createAttributes() {
         return Monster.createMonsterAttributes()
-                .add(Attributes.MAX_HEALTH, 200.0)
+                .add(Attributes.MAX_HEALTH, 260.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.25)
-                .add(Attributes.ATTACK_DAMAGE, 9.0)
-                .add(Attributes.ARMOR, 14.0)
+                .add(Attributes.ATTACK_DAMAGE, 11.0)
+                .add(Attributes.ARMOR, 10.0)
                 .add(Attributes.ARMOR_TOUGHNESS, 6.0)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.9)
                 .add(Attributes.FOLLOW_RANGE, 32.0)
@@ -424,7 +422,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .shape(AttackShape.sector(3.2F, 50.0F))
                 .anchor(1.4F, 0.0F, 1.4F)
                 .sweepAngle(50.0F, -65.0F)
-                .damage(11.0F)
+                .damage(13.0F)
                 // Deliberately low: A's job is to leave the target where B can still reach.
                 .knockback(0.25F)
                 .filter(t -> !(t instanceof MinotaurEntity))
@@ -435,7 +433,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .shape(AttackShape.sector(3.4F, 50.0F))
                 .anchor(1.4F, 0.0F, 1.4F)
                 .sweepAngle(-60.0F, 30.0F)
-                .damage(11.0F)
+                .damage(13.0F)
                 .knockback(0.9F)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(horizontal2);
@@ -447,7 +445,8 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
                 .anchor(1.6F, 0.0F, 2.5F)
                 .sweepHeight(2.5F, 0.0F)
                 .sweepForward(1.6F, 2.8F)
-                .damage(18.0F)
+                .damage(20.0F)
+                .damageSource(MythosMortalsDamageTypes::minotaurGore)
                 .knockback(0.4F)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .onHit((attacker, target) -> {
@@ -471,7 +470,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         HitWindow.of(4, 7)
                 .shape(AttackShape.sector(3.4F, 100.0F))
                 .anchor(0.0F, 0.0F, 1.2F)
-                .damage(6.0F)
+                .damage(8.0F)
                 .knockback(MinotaurCtx.PUSH_KNOCKBACK)
                 .filter(t -> !(t instanceof MinotaurEntity))
                 .applyTo(push);
