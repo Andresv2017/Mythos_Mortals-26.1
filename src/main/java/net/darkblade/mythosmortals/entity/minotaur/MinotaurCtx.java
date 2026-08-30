@@ -78,7 +78,7 @@ public final class MinotaurCtx {
     public static final int CHARGE_HIT_RECOVERY = 15;
     public static final int CHARGE_STUN_RECOVERY = 20;
     public static final int CHARGE_WHIFF_RECOVERY = 25;
-    public static final float CHARGE_DAMAGE = 12.0F;
+    public static final float CHARGE_DAMAGE = 18.0F;
 
     // --- speeds ---
 
