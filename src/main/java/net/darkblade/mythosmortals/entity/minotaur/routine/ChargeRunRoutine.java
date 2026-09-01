@@ -1,7 +1,7 @@
-package net.darkblade.mythosmortals.entity.minotaur.behavior;
+package net.darkblade.mythosmortals.entity.minotaur.routine;
 
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.Behavior;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.BehaviorContext;
+import net.darkblade.deluxelib.entity.ai.cortex.routine.Routine;
+import net.darkblade.deluxelib.entity.ai.cortex.Blackboard;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurCtx;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurEntity;
 import net.darkblade.mythosmortals.entity.minotaur.MinotaurState;
@@ -11,13 +11,13 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 
-public class ChargeRunBehavior implements Behavior<MinotaurEntity, MinotaurState> {
+public class ChargeRunRoutine implements Routine<MinotaurEntity, MinotaurState> {
 
     @Override
-    public @Nullable Integer tick(MinotaurEntity entity, BehaviorContext context) {
-        final Vec3 direction = context.get(MinotaurCtx.CHARGE_DIRECTION);
+    public @Nullable MinotaurState run(MinotaurEntity entity, Blackboard bb) {
+        final Vec3 direction = bb.get(MinotaurCtx.CHARGE_DIRECTION);
         if (direction.lengthSqr() < 1.0E-4) {
-            return MinotaurState.COMBAT_IDLE.id();
+            return MinotaurState.COMBAT_IDLE;
         }
 
         final Vec3 motion = entity.getDeltaMovement();
@@ -33,7 +33,7 @@ public class ChargeRunBehavior implements Behavior<MinotaurEntity, MinotaurState
         entity.yHeadRot = yaw;
 
         if (entity.horizontalCollision) {
-            return MinotaurState.CHARGE_STUN.id();
+            return MinotaurState.CHARGE_STUN;
         }
 
         final boolean rammedSomeone = !entity.level().getEntitiesOfClass(
@@ -42,26 +42,26 @@ public class ChargeRunBehavior implements Behavior<MinotaurEntity, MinotaurState
                 t -> t != entity && t.isAlive() && !(t instanceof MinotaurEntity)
         ).isEmpty();
         if (rammedSomeone) {
-            return MinotaurState.CHARGE_HIT.id();
+            return MinotaurState.CHARGE_HIT;
         }
 
-        if (context.ticksInState() >= MinotaurCtx.CHARGE_MAX_RUN_TICKS) {
-            return MinotaurState.CHARGE_RECOVER.id();
+        if (bb.stateAge() >= MinotaurCtx.CHARGE_MAX_RUN_TICKS) {
+            return MinotaurState.CHARGE_RECOVER;
         }
 
         return null;
     }
 
     @Override
-    public boolean canBeInterrupted(MinotaurEntity entity, BehaviorContext context, int interruptingStateId) {
+    public boolean allowsInterrupt(MinotaurEntity entity, Blackboard bb, MinotaurState incoming) {
         return false;
     }
 
     @Override
-    public void onExit(MinotaurEntity entity, BehaviorContext context, boolean interrupted) {
+    public void exit(MinotaurEntity entity, Blackboard bb, boolean interrupted) {
         final Vec3 motion = entity.getDeltaMovement();
         entity.setDeltaMovement(0.0, motion.y, 0.0);
 
-        context.set(MinotaurCtx.NEXT_CHARGE_TIME, entity.level().getGameTime() + MinotaurCtx.CHARGE_COOLDOWN);
+        bb.put(MinotaurCtx.NEXT_CHARGE_TIME, entity.level().getGameTime() + MinotaurCtx.CHARGE_COOLDOWN);
     }
 }
