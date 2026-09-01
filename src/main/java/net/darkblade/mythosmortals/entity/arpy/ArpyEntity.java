@@ -552,11 +552,11 @@ public class ArpyEntity extends AbstractFlyingEntity implements Animatable<ArpyE
         // Ground animations — only play when not flying
         idleGround.setPlayCondition(anim ->
                 !this.isFlying()
-                && this.getDeltaMovement().horizontalDistanceSqr() <= 2.5E-7);
+                && !this.isGroundMoving());
 
         walk.setPlayCondition(anim ->
                 !this.isFlying()
-                && this.getDeltaMovement().horizontalDistanceSqr() > 2.5E-7);
+                && this.isGroundMoving());
 
         // Fly cycle — uses smoothed speed (isFlyingMoving) to prevent instant flicker between
         // idle_fly and fly_sprint. ~2.5s hold timer before transitioning back to idle_fly.

@@ -11,24 +11,24 @@ import net.darkblade.deluxelib.combat.HitWindow;
 import net.darkblade.deluxelib.entity.CortexMonster;
 import net.darkblade.deluxelib.entity.GuardingMeleeEntity;
 import net.darkblade.deluxelib.entity.ai.cortex.Cortex;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.BehaviorContext;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.AnimatedMeleeBehavior;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.ChaseTargetBehavior;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.GuardBehavior;
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.impl.WanderBehavior;
-import net.darkblade.deluxelib.entity.ai.cortex.target.impl.CompositeTargeting;
-import net.darkblade.deluxelib.entity.ai.cortex.target.impl.HurtByAttackerTargeting;
-import net.darkblade.deluxelib.entity.ai.cortex.target.impl.NearestEntityTargeting;
+import net.darkblade.deluxelib.entity.ai.cortex.Blackboard;
+import net.darkblade.deluxelib.entity.ai.cortex.routine.impl.SwingRoutine;
+import net.darkblade.deluxelib.entity.ai.cortex.routine.impl.PursueRoutine;
+import net.darkblade.deluxelib.entity.ai.cortex.routine.impl.PoiseRoutine;
+import net.darkblade.deluxelib.entity.ai.cortex.routine.impl.WanderRoutine;
+import net.darkblade.deluxelib.entity.ai.cortex.sense.impl.CompositeSense;
+import net.darkblade.deluxelib.entity.ai.cortex.sense.impl.HurtByAttackerSense;
+import net.darkblade.deluxelib.entity.ai.cortex.sense.impl.NearestEntitySense;
 import net.darkblade.deluxelib.entity.ai.pathing.DirectionalMoveControl;
 import net.darkblade.deluxelib.entity.ai.rotation.SmoothBodyRotationControl;
 import net.minecraft.world.entity.ai.control.BodyRotationControl;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeHitBehavior;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeRecoverBehavior;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeRunBehavior;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeStunBehavior;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.ChargeWindupBehavior;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.PushBehavior;
-import net.darkblade.mythosmortals.entity.minotaur.behavior.SpottedRoarBehavior;
+import net.darkblade.mythosmortals.entity.minotaur.routine.ChargeHitRoutine;
+import net.darkblade.mythosmortals.entity.minotaur.routine.ChargeRecoverRoutine;
+import net.darkblade.mythosmortals.entity.minotaur.routine.ChargeRunRoutine;
+import net.darkblade.mythosmortals.entity.minotaur.routine.ChargeStunRoutine;
+import net.darkblade.mythosmortals.entity.minotaur.routine.ChargeWindupRoutine;
+import net.darkblade.mythosmortals.entity.minotaur.routine.PushRoutine;
+import net.darkblade.mythosmortals.entity.minotaur.routine.SpottedRoarRoutine;
 import net.darkblade.mythosmortals.entity.minotaur.client.render.MinotaurAnimation;
 import net.darkblade.mythosmortals.entity.minotaur.debug.MinotaurAnimDebug;
 import net.darkblade.mythosmortals.registry.MythosMortalsDamageTypes;
@@ -183,72 +183,72 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
     @Override
     protected Cortex<MinotaurEntity, MinotaurState> buildCortex() {
         return Cortex.<MinotaurEntity, MinotaurState>builder(MinotaurState.IDLE)
-                .register(MinotaurState.IDLE,
-                        new WanderBehavior<MinotaurEntity, MinotaurState>(MinotaurCtx.WALK_SPEED)
+                .bind(MinotaurState.IDLE,
+                        new WanderRoutine<MinotaurEntity, MinotaurState>(MinotaurCtx.WALK_SPEED)
                                 .onTargetFound(MinotaurState.SPOTTED))
                 // Fixed opener: roar → charge, skipping pickAttack's cooldown check.
-                .register(MinotaurState.SPOTTED, new SpottedRoarBehavior())
-                .register(MinotaurState.CHASE,
-                        new ChaseTargetBehavior<MinotaurEntity, MinotaurState>(MinotaurCtx.RUN_SPEED, MinotaurEntity::pickAttack)
+                .bind(MinotaurState.SPOTTED, new SpottedRoarRoutine())
+                .bind(MinotaurState.CHASE,
+                        new PursueRoutine<MinotaurEntity, MinotaurState>(MinotaurCtx.RUN_SPEED, MinotaurEntity::pickAttack)
                                 .guard(MinotaurState.COMBAT_IDLE, MinotaurCtx.MELEE_RANGE))
-                .register(MinotaurState.COMBAT_IDLE,
-                        new GuardBehavior<MinotaurEntity, MinotaurState>(MinotaurEntity::pickAttack)
+                .bind(MinotaurState.COMBAT_IDLE,
+                        new PoiseRoutine<MinotaurEntity, MinotaurState>(MinotaurEntity::pickAttack)
                                 .chase(MinotaurState.CHASE, MinotaurCtx.ATTACK_RANGE))
                 // faceTargetUntil(3): the sweep starts at tick 3.3, so the facing must be
                 // committed by then or the damage arc and the drawn arc diverge.
-                .register(MinotaurState.ATTACK_HORIZONTAL_1,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_horizontal_1", MinotaurCtx.COMBO_A_TICKS, MinotaurState.COMBAT_IDLE)
+                .bind(MinotaurState.ATTACK_HORIZONTAL_1,
+                        new SwingRoutine<MinotaurEntity, MinotaurState>("attack_horizontal_1", MinotaurCtx.COMBO_A_TICKS, MinotaurState.COMBAT_IDLE)
                                 .faceTargetUntil(3)
                                 .combo(MinotaurState.ATTACK_HORIZONTAL_2, MinotaurCtx.COMBO_CHAIN_CHANCE, MinotaurCtx.COMBO_CHAIN_RANGE)
                                 .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
                 // Finishers are tried in order, so the short-range one goes first or the
                 // long-range one swallows its cases.
-                .register(MinotaurState.ATTACK_HORIZONTAL_2,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_horizontal_2", MinotaurCtx.COMBO_B_TICKS, MinotaurState.COMBAT_IDLE)
+                .bind(MinotaurState.ATTACK_HORIZONTAL_2,
+                        new SwingRoutine<MinotaurEntity, MinotaurState>("attack_horizontal_2", MinotaurCtx.COMBO_B_TICKS, MinotaurState.COMBAT_IDLE)
                                 .faceTargetUntil(3)
                                 .combo(MinotaurState.ATTACK_PUSH, MinotaurCtx.COMBO_FINISHER_CHANCE, MinotaurCtx.PUSH_RANGE)
                                 .combo(MinotaurState.ATTACK_VERTICAL, MinotaurCtx.COMBO_FINISHER_CHANCE, MinotaurCtx.COMBO_CHAIN_RANGE)
                                 .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
-                .register(MinotaurState.ATTACK_VERTICAL,
-                        new AnimatedMeleeBehavior<MinotaurEntity, MinotaurState>("attack_vertical", MinotaurCtx.VERTICAL_TICKS, MinotaurState.COMBAT_IDLE)
+                .bind(MinotaurState.ATTACK_VERTICAL,
+                        new SwingRoutine<MinotaurEntity, MinotaurState>("attack_vertical", MinotaurCtx.VERTICAL_TICKS, MinotaurState.COMBAT_IDLE)
                                 .faceTargetUntil(16)
                                 .cooldown(MinotaurCtx.NEXT_MELEE_TIME, MinotaurCtx.MELEE_COOLDOWN))
-                .register(MinotaurState.ATTACK_PUSH, new PushBehavior())
-                .register(MinotaurState.CHARGE_WINDUP, new ChargeWindupBehavior())
-                .register(MinotaurState.CHARGE_RUN, new ChargeRunBehavior())
-                .register(MinotaurState.CHARGE_HIT, new ChargeHitBehavior())
-                .register(MinotaurState.CHARGE_STUN, new ChargeStunBehavior())
-                .register(MinotaurState.CHARGE_RECOVER, new ChargeRecoverBehavior())
+                .bind(MinotaurState.ATTACK_PUSH, new PushRoutine())
+                .bind(MinotaurState.CHARGE_WINDUP, new ChargeWindupRoutine())
+                .bind(MinotaurState.CHARGE_RUN, new ChargeRunRoutine())
+                .bind(MinotaurState.CHARGE_HIT, new ChargeHitRoutine())
+                .bind(MinotaurState.CHARGE_STUN, new ChargeStunRoutine())
+                .bind(MinotaurState.CHARGE_RECOVER, new ChargeRecoverRoutine())
 
-                .globalRule((entity, ctx, currentStateId) -> {
+                .reflex((entity, bb, active) -> {
                     final LivingEntity target = entity.getTarget();
-                    if ((target == null || !target.isAlive()) && currentStateId != MinotaurState.IDLE.id()) {
-                        return MinotaurState.IDLE.id();
+                    if ((target == null || !target.isAlive()) && active != MinotaurState.IDLE) {
+                        return MinotaurState.IDLE;
                     }
                     return null;
                 })
 
                 // Leaving the stun always goes through the guard.
-                .blockTransitions(MinotaurState.CHARGE_STUN,
+                .denyAll(MinotaurState.CHARGE_STUN,
                         MinotaurState.ATTACK_HORIZONTAL_1, MinotaurState.ATTACK_HORIZONTAL_2,
                         MinotaurState.ATTACK_VERTICAL, MinotaurState.ATTACK_PUSH,
                         MinotaurState.CHARGE_WINDUP)
 
-                // One filtered LivingEntity scan, not two stacked NearestEntityTargeting: those
+                // One filtered LivingEntity scan, not two stacked NearestEntitySense: those
                 // only keep a target of their own class, so the last one would steal it every cycle.
-                .targeting(new CompositeTargeting<MinotaurEntity>(
-                        new NearestEntityTargeting<MinotaurEntity, LivingEntity>(LivingEntity.class, 32.0, 10, true,
+                .sense(new CompositeSense<MinotaurEntity>(
+                        new NearestEntitySense<MinotaurEntity, LivingEntity>(LivingEntity.class, 32.0, 10, true,
                                 candidate -> candidate instanceof Player player
                                         ? !player.isCreative() && !player.isSpectator()
                                         : candidate instanceof GuardingMeleeEntity),
-                        new HurtByAttackerTargeting<>(400)
+                        new HurtByAttackerSense<>(400)
                 ))
                 .build();
     }
 
 
     @Nullable
-    public MinotaurState pickAttack(BehaviorContext ctx) {
+    public MinotaurState pickAttack(Blackboard bb) {
         final LivingEntity target = getTarget();
         if (target == null || !target.isAlive()) {
             return null;
@@ -257,7 +257,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
         final long now = level().getGameTime();
         final double distance = distanceTo(target);
         final boolean chargeReady = MinotaurCtx.ENABLE_UNANIMATED_ATTACKS
-                && now >= ctx.get(MinotaurCtx.NEXT_CHARGE_TIME);
+                && now >= bb.get(MinotaurCtx.NEXT_CHARGE_TIME);
 
         if (chargeReady
                 && distance >= MinotaurCtx.CHARGE_MIN_RANGE
@@ -269,7 +269,7 @@ public class MinotaurEntity extends CortexMonster<MinotaurEntity, MinotaurState>
             return null;
         }
 
-        if (now < ctx.get(MinotaurCtx.NEXT_MELEE_TIME)) {
+        if (now < bb.get(MinotaurCtx.NEXT_MELEE_TIME)) {
             return null;
         }
 

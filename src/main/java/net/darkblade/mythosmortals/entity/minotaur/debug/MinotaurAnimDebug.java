@@ -85,7 +85,7 @@ public final class MinotaurAnimDebug {
             this.lastStateId = stateId;
             this.lastStateTicks = 0;
         } else if (cortex != null) {
-            this.lastStateTicks = cortex.ticksInState();
+            this.lastStateTicks = cortex.stateAge();
         }
 
         final boolean inCombat = this.mino.getTarget() != null || state != MinotaurState.IDLE;
@@ -177,7 +177,7 @@ public final class MinotaurAnimDebug {
         }
 
         if (cortex != null) {
-            line.append(" §7t").append(cortex.ticksInState());
+            line.append(" §7t").append(cortex.stateAge());
         }
 
         final LivingEntity target = this.mino.getTarget();
@@ -210,7 +210,7 @@ public final class MinotaurAnimDebug {
 
         line.append(" | ").append(state.name());
         if (cortex != null) {
-            line.append(" t").append(cortex.ticksInState());
+            line.append(" t").append(cortex.stateAge());
         }
 
         final LivingEntity target = this.mino.getTarget();
@@ -276,7 +276,7 @@ public final class MinotaurAnimDebug {
     }
 
     private long meleeCooldown(@NotNull Cortex<MinotaurEntity, MinotaurState> cortex) {
-        return cortex.context().get(MinotaurCtx.NEXT_MELEE_TIME) - this.mino.level().getGameTime();
+        return cortex.blackboard().get(MinotaurCtx.NEXT_MELEE_TIME) - this.mino.level().getGameTime();
     }
 
     private static @NotNull String hitRange(@NotNull BaseAnimation clip) {
