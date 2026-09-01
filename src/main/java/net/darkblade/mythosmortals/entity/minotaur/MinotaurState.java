@@ -1,9 +1,9 @@
 package net.darkblade.mythosmortals.entity.minotaur;
 
-import net.darkblade.deluxelib.entity.ai.cortex.StateEnum;
+import net.darkblade.deluxelib.entity.ai.cortex.CortexState;
 
 
-public enum MinotaurState implements StateEnum {
+public enum MinotaurState implements CortexState {
     IDLE(0),                // rest / passive patrol
     SPOTTED(1),             // one-shot roar upon detecting the player
     CHASE(2),               // active pursuit (run)

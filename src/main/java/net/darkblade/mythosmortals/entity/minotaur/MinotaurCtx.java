@@ -1,6 +1,6 @@
 package net.darkblade.mythosmortals.entity.minotaur;
 
-import net.darkblade.deluxelib.entity.ai.cortex.behavior.BehaviorData;
+import net.darkblade.deluxelib.entity.ai.cortex.BlackboardKey;
 import net.minecraft.world.phys.Vec3;
 
 public final class MinotaurCtx {
@@ -10,11 +10,11 @@ public final class MinotaurCtx {
 
     // --- context keys ---
 
-    public static final BehaviorData<Long> NEXT_MELEE_TIME = BehaviorData.longKey("next_melee_time");
+    public static final BlackboardKey<Long> NEXT_MELEE_TIME = BlackboardKey.ofLong("next_melee_time");
 
-    public static final BehaviorData<Long> NEXT_CHARGE_TIME = BehaviorData.longKey("next_charge_time");
+    public static final BlackboardKey<Long> NEXT_CHARGE_TIME = BlackboardKey.ofLong("next_charge_time");
 
-    public static final BehaviorData<Vec3> CHARGE_DIRECTION = BehaviorData.vec3Key("charge_direction");
+    public static final BlackboardKey<Vec3> CHARGE_DIRECTION = BlackboardKey.ofVec3("charge_direction");
 
     // --- toggles ---
 
