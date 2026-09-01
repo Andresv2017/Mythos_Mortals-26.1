@@ -34,6 +34,11 @@ bin/
 
 ### Minecraft Modding ###
 run/
+run2/
+# Ignore the dev server's generated state but keep its properties in the repo: a parent
+# directory that is excluded outright can't have files re-included, hence runServer/* here.
+runServer/*
+!runServer/server.properties
 !**/src/**/run/
 **/src/generated/**/.cache/
 repo/

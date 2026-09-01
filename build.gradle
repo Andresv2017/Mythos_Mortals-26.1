@@ -65,13 +65,35 @@ neoForge {
     runs {
         client {
             client()
+            // Offline session, so no Microsoft login is needed to run the game. A LAN world takes
+            // these clients anyway: the integrated server tries to verify and, when that fails,
+            // ServerLoginPacketListenerImpl lets them in on an offline profile because the host is
+            // singleplayer. The cost is cosmetic — an offline profile carries no skin. Set
+            // `devLogin = true` instead (and drop this --username, DevLogin supplies its own) to
+            // run with a real account.
+            programArguments.addAll '--username', 'Void_364'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        // Second dev client, for testing multiplayer with two windows at once.
+        // The client run type is marked singleInstance, so a separate run is needed;
+        // its own game directory keeps options.txt and saves from clashing with `client`.
+        client2 {
+            client()
+            gameDirectory = project.file('run2')
+            programArguments.addAll '--username', 'Dev2'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         server {
             server()
             programArgument '--nogui'
+            // Own directory: the server would otherwise drop world/, server.properties and eula.txt
+            // into run/, which is the main client's profile. Its server.properties ships with
+            // online-mode=false so the offline client2 (--username Dev2) can connect — an integrated
+            // LAN world can't host it, IntegratedServer#initServer always authenticates.
+            gameDirectory = project.file('runServer')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
         // This run config launches GameTestServer and runs all registered gametests, then exits.
