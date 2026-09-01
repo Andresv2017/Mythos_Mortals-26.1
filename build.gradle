@@ -156,7 +156,7 @@ configurations {
 }
 
 dependencies {
-    implementation "net.darkblade.deluxelib:deluxelib:${deluxelib_version}"
+    implementation "curse.maven:deluxe-lib-1594910:8782752"
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
